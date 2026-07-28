@@ -6837,6 +6837,55 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/MovieResult'
+  /ratings/imdb/batch:
+    post:
+      summary: Get IMDb ratings for movie poster cards
+      description: Returns cached IMDb ratings for up to 40 TMDB movie IDs. Individual lookup failures are returned as null values.
+      tags:
+        - movies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tmdbIds
+              properties:
+                tmdbIds:
+                  type: array
+                  maxItems: 40
+                  uniqueItems: true
+                  items:
+                    type: integer
+                    minimum: 1
+                  example: [550, 680]
+      responses:
+        '200':
+          description: IMDb ratings keyed by TMDB movie ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ratings:
+                    type: object
+                    additionalProperties:
+                      nullable: true
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                          example: Fight Club
+                        url:
+                          type: string
+                          example: 'https://www.imdb.com/title/tt0137523'
+                        criticsScore:
+                          type: number
+                          example: 8.8
+                        criticsScoreCount:
+                          type: number
+                          example: 2500000
   /movie/{movieId}/ratings:
     get:
       summary: Get movie ratings

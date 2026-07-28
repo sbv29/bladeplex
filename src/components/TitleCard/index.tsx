@@ -1,3 +1,4 @@
+import ImdbLogo from '@app/assets/services/imdb.svg';
 import Spinner from '@app/assets/spinner.svg';
 import BlocklistModal from '@app/components/BlocklistModal';
 import Button from '@app/components/Common/Button';
@@ -7,6 +8,7 @@ import Tooltip from '@app/components/Common/Tooltip';
 import RequestModal from '@app/components/RequestModal';
 import ErrorCard from '@app/components/TitleCard/ErrorCard';
 import Placeholder from '@app/components/TitleCard/Placeholder';
+import useImdbRating from '@app/hooks/useImdbRating';
 import { useIsTouch } from '@app/hooks/useIsTouch';
 import useToasts from '@app/hooks/useToasts';
 import { Permission, UserType, useUser } from '@app/hooks/useUser';
@@ -27,6 +29,7 @@ import type { MediaType } from '@server/models/Search';
 import axios from 'axios';
 import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { useInView } from 'react-intersection-observer';
 import { useIntl } from 'react-intl';
 import { mutate } from 'swr';
 
@@ -80,6 +83,18 @@ const TitleCard = ({
     useState<boolean>(!isAddedToWatchlist);
   const [showBlocklistModal, setShowBlocklistModal] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const { ref: inViewRef, inView } = useInView({
+    triggerOnce: true,
+    rootMargin: '200px',
+  });
+  const setCardRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      cardRef.current = node;
+      inViewRef(node);
+    },
+    [inViewRef]
+  );
+  const imdbRating = useImdbRating(id, mediaType === 'movie' && inView);
 
   // Just to get the year from the date
   if (year) {
@@ -318,7 +333,7 @@ const TitleCard = ({
     <div
       className={canExpand ? 'w-full' : 'w-36 sm:w-36 md:w-44'}
       data-testid="title-card"
-      ref={cardRef}
+      ref={setCardRef}
     >
       <RequestModal
         tmdbId={id}
@@ -385,6 +400,25 @@ const TitleCard = ({
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             fill
           />
+          {imdbRating && (
+            <Transition
+              as={Fragment}
+              show={!showDetail && !showRequestModal}
+              enter="transition-opacity duration-300 ease-in-out"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="transition-opacity duration-300 ease-in-out"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="pointer-events-none absolute bottom-2 left-2 z-30 flex items-center gap-1 rounded-md bg-gray-950/80 px-1.5 py-1 text-xs font-semibold text-white shadow-md">
+                <ImdbLogo className="w-7 opacity-90" />
+                <span className="opacity-90">
+                  {imdbRating.criticsScore.toFixed(1)}
+                </span>
+              </div>
+            </Transition>
+          )}
           <div className="absolute left-0 right-0 flex items-center justify-between p-2">
             <div
               className={`pointer-events-none z-40 self-start rounded-full border shadow-md ${

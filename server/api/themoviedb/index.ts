@@ -7,6 +7,7 @@ import type {
   TmdbCollection,
   TmdbCompanySearchResponse,
   TmdbExternalIdResponse,
+  TmdbExternalIds,
   TmdbGenre,
   TmdbGenresResult,
   TmdbKeyword,
@@ -338,6 +339,23 @@ class TheMovieDb extends ExternalAPI implements TvShowProvider {
       throw new Error(`[TMDB] Failed to fetch movie details: ${e.message}`, {
         cause: e,
       });
+    }
+  };
+
+  public getMovieExternalIds = async (
+    movieId: number
+  ): Promise<TmdbExternalIds> => {
+    try {
+      return await this.get<TmdbExternalIds>(
+        `/movie/${movieId}/external_ids`,
+        undefined,
+        86400 * 30
+      );
+    } catch (e) {
+      throw new Error(
+        `[TMDB] Failed to fetch movie external IDs: ${e.message}`,
+        { cause: e }
+      );
     }
   };
 

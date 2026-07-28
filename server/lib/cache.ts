@@ -6,6 +6,7 @@ export type AvailableCacheIds =
   | 'sonarr'
   | 'rt'
   | 'imdb'
+  | 'imdbid'
   | 'github'
   | 'plexguid'
   | 'plextv'
@@ -56,6 +57,10 @@ class CacheManager {
     }),
     imdb: new Cache('imdb', 'IMDB Radarr Proxy', {
       stdTtl: 43200,
+      checkPeriod: 60 * 30,
+    }),
+    imdbid: new Cache('imdbid', 'TMDB to IMDb ID Mapping', {
+      stdTtl: 86400 * 30,
       checkPeriod: 60 * 30,
     }),
     github: new Cache('github', 'GitHub API', {
