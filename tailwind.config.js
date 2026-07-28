@@ -11,6 +11,50 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        gray: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#e5e5e5',
+          300: '#d4d4d4',
+          400: '#a3a3a3',
+          500: '#737373',
+          600: '#3a3a3a',
+          700: '#252525',
+          800: '#181818',
+          900: '#0b0b0b',
+          950: '#080808',
+        },
+        surface: {
+          canvas: '#0b0b0b',
+          secondary: '#121212',
+          card: '#181818',
+          elevated: '#202020',
+          hover: '#252525',
+          overlay: '#0b0b0b',
+        },
+        line: {
+          DEFAULT: '#2b2b2b',
+          strong: '#3a3a3a',
+        },
+      },
+      borderColor: {
+        gray: {
+          500: '#454545',
+          700: '#2b2b2b',
+        },
+      },
+      divideColor: {
+        gray: {
+          700: '#2b2b2b',
+        },
+      },
+      ringColor: {
+        gray: {
+          500: '#454545',
+          700: '#2b2b2b',
+        },
+      },
       transitionProperty: {
         'max-height': 'max-height',
         width: 'width',

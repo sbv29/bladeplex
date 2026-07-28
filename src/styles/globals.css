@@ -3,16 +3,27 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-surface-canvas: 11 11 11;
+    --color-surface-secondary: 18 18 18;
+    --color-surface-card: 24 24 24;
+    --color-surface-elevated: 32 32 32;
+    --color-surface-hover: 37 37 37;
+    --color-surface-border: 43 43 43;
+    --color-surface-border-strong: 58 58 58;
+  }
+
   html {
     min-height: calc(100% + env(safe-area-inset-top));
     padding: env(safe-area-inset-top) env(safe-area-inset-right)
       calc(4rem + env(safe-area-inset-bottom)) env(safe-area-inset-left);
     scrollbar-width: thin;
-    scrollbar-color: #4b5563 #1f2937;
+    scrollbar-color: rgb(var(--color-surface-border-strong))
+      rgb(var(--color-surface-card));
   }
 
   html:hover {
-    scrollbar-color: #6b7280 #1f2937;
+    scrollbar-color: #737373 rgb(var(--color-surface-card));
   }
 
   /* WebKit scrollbar styles */
@@ -21,15 +32,15 @@
   }
 
   html::-webkit-scrollbar-track {
-    background: #1f2937;
+    background: rgb(var(--color-surface-card));
   }
 
   html::-webkit-scrollbar-thumb {
-    background-color: #4b5563;
+    background-color: rgb(var(--color-surface-border-strong));
   }
 
   html:hover::-webkit-scrollbar-thumb {
-    background-color: #6b7280;
+    background-color: #737373;
   }
 
   @media (min-width: 640px) {
@@ -62,7 +73,11 @@
     @apply border-r border-gray-700;
     padding-top: env(safe-area-inset-top);
     padding-left: env(safe-area-inset-left);
-    background: linear-gradient(180deg, rgba(31, 41, 55, 1) 0%, #131928 100%);
+    background: linear-gradient(
+      180deg,
+      rgb(var(--color-surface-card)) 0%,
+      rgb(var(--color-surface-canvas)) 100%
+    );
   }
 
   .slideover {

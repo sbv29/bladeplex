@@ -148,7 +148,7 @@ const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
                 className="absolute inset-0"
                 style={{
                   backgroundImage:
-                    'linear-gradient(180deg, rgba(31, 41, 55, 0.75) 0%, rgba(31, 41, 55, 1) 100%)',
+                    'linear-gradient(180deg, rgb(var(--color-surface-card) / 0.75) 0%, rgb(var(--color-surface-card)) 100%)',
                 }}
               />
             </div>
