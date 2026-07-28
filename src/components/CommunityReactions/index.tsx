@@ -197,7 +197,7 @@ const CommunityReactions = ({
             }`}
           />
         )}
-        <span>{data.likeCount}</span>
+        <span className="text-white">{data.likeCount}</span>
       </Button>
       <Button
         buttonSize={variant === 'actions' ? 'md' : 'sm'}
@@ -236,7 +236,7 @@ const CommunityReactions = ({
             }`}
           />
         )}
-        <span>{data.dislikeCount}</span>
+        <span className="text-white">{data.dislikeCount}</span>
       </Button>
     </>
   );
