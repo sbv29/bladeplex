@@ -43,6 +43,7 @@ interface CommunityReactionsProps {
   mediaType: MediaType;
   tmdbId: number;
   variant?: 'sidebar' | 'actions';
+  className?: string;
 }
 
 const PREVIEW_LIMIT = 5;
@@ -69,6 +70,7 @@ const CommunityReactions = ({
   mediaType,
   tmdbId,
   variant = 'sidebar',
+  className = '',
 }: CommunityReactionsProps) => {
   const intl = useIntl();
   const { user } = useUser();
@@ -167,7 +169,7 @@ const CommunityReactions = ({
             ? 'success'
             : 'default'
         }
-        className={variant === 'actions' ? 'z-40 mr-2' : undefined}
+        className={variant === 'actions' ? 'z-40 xl:mr-2' : undefined}
         disabled={isSubmitting}
         aria-pressed={data.currentUserReaction === CommunityReactionValue.LIKE}
         aria-label={intl.formatMessage(
@@ -204,7 +206,7 @@ const CommunityReactions = ({
             ? 'danger'
             : 'default'
         }
-        className={variant === 'actions' ? 'z-40 mr-2' : undefined}
+        className={variant === 'actions' ? 'z-40 xl:mr-2' : undefined}
         disabled={isSubmitting}
         aria-pressed={
           data.currentUserReaction === CommunityReactionValue.DISLIKE
@@ -240,7 +242,13 @@ const CommunityReactions = ({
   );
 
   if (variant === 'actions') {
-    return <div className="flex">{reactionButtons}</div>;
+    return (
+      <div
+        className={`flex flex-wrap justify-center gap-2 xl:flex-nowrap xl:gap-0 ${className}`}
+      >
+        {reactionButtons}
+      </div>
+    );
   }
 
   return (

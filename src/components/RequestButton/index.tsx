@@ -19,6 +19,8 @@ import { useIntl } from 'react-intl';
 import { mutate } from 'swr';
 
 const messages = defineMessages('components.RequestButton', {
+  requestmovie: 'Request Movie',
+  requestshow: 'Request Show',
   viewrequest: 'View Request',
   viewrequest4k: 'View 4K Request',
   requestmore: 'Request More',
@@ -51,6 +53,7 @@ interface RequestButtonProps {
   media?: Media;
   isShowComplete?: boolean;
   is4kShowComplete?: boolean;
+  className?: string;
 }
 
 const RequestButton = ({
@@ -60,6 +63,7 @@ const RequestButton = ({
   mediaType,
   isShowComplete = false,
   is4kShowComplete = false,
+  className = '',
 }: RequestButtonProps) => {
   const intl = useIntl();
   const settings = useSettings();
@@ -284,7 +288,9 @@ const RequestButton = ({
   ) {
     buttons.push({
       id: 'request',
-      text: intl.formatMessage(globalMessages.request),
+      text: intl.formatMessage(
+        mediaType === 'movie' ? messages.requestmovie : messages.requestshow
+      ),
       action: () => {
         setEditRequest(false);
         setShowRequestModal(true);
@@ -399,7 +405,7 @@ const RequestButton = ({
           </>
         }
         onClick={buttonOne.action}
-        className="ml-2"
+        className={className || 'ml-2'}
       >
         {others && others.length > 0
           ? others.map((button) => (

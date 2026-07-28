@@ -2,6 +2,7 @@ import ButtonWithDropdown from '@app/components/Common/ButtonWithDropdown';
 
 interface PlayButtonProps {
   links: PlayButtonLink[];
+  className?: string;
 }
 
 export interface PlayButtonLink {
@@ -10,7 +11,7 @@ export interface PlayButtonLink {
   svg: React.ReactNode;
 }
 
-const PlayButton = ({ links }: PlayButtonProps) => {
+const PlayButton = ({ links, className }: PlayButtonProps) => {
   if (!links || !links.length) {
     return null;
   }
@@ -27,6 +28,7 @@ const PlayButton = ({ links }: PlayButtonProps) => {
       }
       href={links[0].url}
       target="_blank"
+      className={className}
     >
       {links.length > 1 &&
         links.slice(1).map((link, i) => {

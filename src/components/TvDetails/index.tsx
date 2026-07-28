@@ -8,9 +8,9 @@ import PageTitle from '@app/components/Common/PageTitle';
 import type { PlayButtonLink } from '@app/components/Common/PlayButton';
 import PlayButton from '@app/components/Common/PlayButton';
 import StatusBadgeMini from '@app/components/Common/StatusBadgeMini';
-import Tag from '@app/components/Common/Tag';
 import Tooltip from '@app/components/Common/Tooltip';
 import CommunityReactions from '@app/components/CommunityReactions';
+import DetailPageTags from '@app/components/DetailPageTags';
 import ExternalLinkBlock from '@app/components/ExternalLinkBlock';
 import IssueModal from '@app/components/IssueModal';
 import ManageSlideOver from '@app/components/ManageSlideOver';
@@ -619,7 +619,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
             )}
           {data?.mediaInfo?.status !== MediaStatus.BLOCKLISTED &&
             user?.userType !== UserType.PLEX && (
-              <>
+              <div className="hidden xl:block">
                 {toggleWatchlist ? (
                   <Tooltip
                     content={intl.formatMessage(messages.addtowatchlist)}
@@ -650,19 +650,30 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                     </Button>
                   </Tooltip>
                 )}
-              </>
+              </div>
             )}
-          <div className="z-20">
-            <PlayButton links={mediaLinks} />
+          <div className="order-first flex w-full flex-col items-center gap-2 xl:contents">
+            <CommunityReactions
+              mediaType={MediaType.TV}
+              tmdbId={data.id}
+              variant="actions"
+              className="xl:hidden"
+            />
+            <div className="z-20 flex w-44 justify-center xl:contents [&>div>:first-child]:flex-1 xl:[&>div>:first-child]:flex-none [&>div]:w-full xl:[&>div]:w-auto">
+              <PlayButton links={mediaLinks} className="justify-center" />
+            </div>
+            <div className="flex w-44 justify-center xl:contents [&>div>:first-child]:flex-1 xl:[&>div>:first-child]:flex-none [&>div]:w-full xl:[&>div]:w-auto">
+              <RequestButton
+                mediaType="tv"
+                onUpdate={() => revalidate()}
+                tmdbId={data?.id}
+                media={data?.mediaInfo}
+                isShowComplete={isComplete}
+                is4kShowComplete={is4kComplete}
+                className="ml-0 justify-center xl:ml-2"
+              />
+            </div>
           </div>
-          <RequestButton
-            mediaType="tv"
-            onUpdate={() => revalidate()}
-            tmdbId={data?.id}
-            media={data?.mediaInfo}
-            isShowComplete={isComplete}
-            is4kShowComplete={is4kComplete}
-          />
           {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
             data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE ||
             (settings.currentSettings.series4kEnabled &&
@@ -763,19 +774,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
               </div>
             </>
           )}
-          {data.keywords.length > 0 && (
-            <div className="mt-6">
-              {data.keywords.map((keyword) => (
-                <Link
-                  href={`/discover/tv?keywords=${keyword.id}`}
-                  key={`keyword-id-${keyword.id}`}
-                  className="mb-2 mr-2 inline-flex last:mr-0"
-                >
-                  <Tag>{keyword.name}</Tag>
-                </Link>
-              ))}
-            </div>
-          )}
+          <DetailPageTags keywords={data.keywords} mediaType="tv" />
           <h2 className="py-4">{intl.formatMessage(messages.seasonstitle)}</h2>
           <div className="flex w-full flex-col space-y-2">
             {data.seasons

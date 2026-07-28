@@ -7,9 +7,9 @@ import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import type { PlayButtonLink } from '@app/components/Common/PlayButton';
 import PlayButton from '@app/components/Common/PlayButton';
-import Tag from '@app/components/Common/Tag';
 import Tooltip from '@app/components/Common/Tooltip';
 import CommunityReactions from '@app/components/CommunityReactions';
+import DetailPageTags from '@app/components/DetailPageTags';
 import IssueModal from '@app/components/IssueModal';
 import ManageSlideOver from '@app/components/ManageSlideOver';
 import MediaSlider from '@app/components/MediaSlider';
@@ -471,20 +471,25 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                 </Button>
               </Tooltip>
             )}
-          <CommunityReactions
-            mediaType={MediaType.MOVIE}
-            tmdbId={data.id}
-            variant="actions"
-          />
-          <div className="z-20">
-            <PlayButton links={mediaLinks} />
+          <div className="order-first flex w-full flex-col items-center gap-2 xl:contents">
+            <CommunityReactions
+              mediaType={MediaType.MOVIE}
+              tmdbId={data.id}
+              variant="actions"
+            />
+            <div className="z-20 flex w-44 justify-center xl:contents [&>div>:first-child]:flex-1 xl:[&>div>:first-child]:flex-none [&>div]:w-full xl:[&>div]:w-auto">
+              <PlayButton links={mediaLinks} className="justify-center" />
+            </div>
+            <div className="flex w-44 justify-center xl:contents [&>div>:first-child]:flex-1 xl:[&>div>:first-child]:flex-none [&>div]:w-full xl:[&>div]:w-auto">
+              <RequestButton
+                mediaType="movie"
+                media={data.mediaInfo}
+                tmdbId={data.id}
+                onUpdate={() => revalidate()}
+                className="ml-0 justify-center xl:ml-2"
+              />
+            </div>
           </div>
-          <RequestButton
-            mediaType="movie"
-            media={data.mediaInfo}
-            tmdbId={data.id}
-            onUpdate={() => revalidate()}
-          />
           {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
             (settings.currentSettings.movie4kEnabled &&
               hasPermission(
@@ -576,19 +581,11 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
               </div>
             </>
           )}
-          {data.keywords.length > 0 && (
-            <div className="mt-6">
-              {data.keywords.map((keyword) => (
-                <Link
-                  href={`/discover/movies?keywords=${keyword.id}`}
-                  key={`keyword-id-${keyword.id}`}
-                  className="mb-2 mr-2 inline-flex last:mr-0"
-                >
-                  <Tag>{keyword.name}</Tag>
-                </Link>
-              ))}
-            </div>
-          )}
+          <DetailPageTags
+            keywords={data.keywords}
+            mediaType="movie"
+            mobileLimit={10}
+          />
         </div>
         <div className="media-overview-right">
           {data.collection && (
