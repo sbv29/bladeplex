@@ -181,6 +181,26 @@ requestRoutes.get<Record<string, unknown>, RequestResultsResponse>(
         .skip(skip)
         .getManyAndCount();
 
+      // Avoid waiting on every configured Radarr/Sonarr server when there is
+      // nothing to enrich. This is especially noticeable on the empty Recent
+      // Requests slider, which otherwise remains in its loading state until
+      // all service timeouts have elapsed.
+      if (requests.length === 0) {
+        return res.status(200).json({
+          pageInfo: {
+            pages: Math.ceil(requestCount / pageSize),
+            pageSize,
+            results: requestCount,
+            page: Math.ceil(skip / pageSize) + 1,
+          },
+          results: [],
+          serviceErrors: {
+            radarr: [],
+            sonarr: [],
+          },
+        });
+      }
+
       const settings = getSettings();
 
       // get all quality profiles for every configured sonarr server
