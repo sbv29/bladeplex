@@ -31,6 +31,7 @@ import { Router } from 'express';
 import authRoutes from './auth';
 import blocklistRoutes from './blocklist';
 import collectionRoutes from './collection';
+import communityReactionRoutes from './communityReactions';
 import discoverRoutes, { createTmdbWithRegionLanguage } from './discover';
 import issueRoutes from './issue';
 import issueCommentRoutes from './issueComment';
@@ -159,6 +160,7 @@ router.use('/search', isAuthenticated(), searchRoutes);
 router.use('/discover', isAuthenticated(), discoverRoutes);
 router.use('/request', isAuthenticated(), requestRoutes);
 router.use('/ratings', isAuthenticated(), ratingsRoutes);
+router.use('/community-reactions', isAuthenticated(), communityReactionRoutes);
 router.use('/watchlist', isAuthenticated(), watchlistRoutes);
 router.use('/blocklist', isAuthenticated(), blocklistRoutes);
 router.use(

@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes community-reaction-like {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  45% {
+    transform: scale(1.3) rotate(-12deg) translateY(-1px);
+  }
+}
+
+@keyframes community-reaction-dislike {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  45% {
+    transform: scale(1.3) rotate(12deg) translateY(1px);
+  }
+}
+
+.animate-community-reaction-like {
+  animation: community-reaction-like 350ms ease-out;
+}
+
+.animate-community-reaction-dislike {
+  animation: community-reaction-dislike 350ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-community-reaction-like,
+  .animate-community-reaction-dislike {
+    animation: none;
+  }
+}
+
 @layer base {
   :root {
     --color-surface-canvas: 11 11 11;

@@ -40,6 +40,8 @@ tags:
     description: Collection of media to watch later
   - name: blocklist
     description: Blocklisted media from discovery page.
+  - name: community reactions
+    description: Local user likes and dislikes for movies and TV series.
 servers:
   - url: '{server}/api/v1'
     variables:
@@ -48,6 +50,49 @@ servers:
 
 components:
   schemas:
+    CommunityReactionUser:
+      type: object
+      required: [id, displayName, avatar]
+      properties:
+        id:
+          type: integer
+        displayName:
+          type: string
+        avatar:
+          type: string
+    CommunityReactionSummary:
+      type: object
+      required:
+        - mediaType
+        - tmdbId
+        - likeCount
+        - dislikeCount
+        - currentUserReaction
+        - likedBy
+        - dislikedBy
+      properties:
+        mediaType:
+          type: string
+          enum: [movie, tv]
+        tmdbId:
+          type: integer
+          minimum: 1
+        likeCount:
+          type: integer
+        dislikeCount:
+          type: integer
+        currentUserReaction:
+          type: string
+          enum: [like, dislike]
+          nullable: true
+        likedBy:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommunityReactionUser'
+        dislikedBy:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommunityReactionUser'
     Blocklist:
       type: object
       properties:
@@ -6889,6 +6934,61 @@ paths:
                         criticsScoreCount:
                           type: number
                           example: 2500000
+  /community-reactions/{mediaType}/{tmdbId}:
+    parameters:
+      - in: path
+        name: mediaType
+        required: true
+        schema:
+          type: string
+          enum: [movie, tv]
+      - in: path
+        name: tmdbId
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      summary: Get a title's community reaction summary
+      tags: [community reactions]
+      responses:
+        '200':
+          description: Community reaction summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityReactionSummary'
+    put:
+      summary: Create or change the current user's reaction
+      tags: [community reactions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reaction]
+              properties:
+                reaction:
+                  type: string
+                  enum: [like, dislike]
+      responses:
+        '200':
+          description: Updated community reaction summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityReactionSummary'
+    delete:
+      summary: Remove the current user's reaction
+      tags: [community reactions]
+      responses:
+        '200':
+          description: Updated community reaction summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityReactionSummary'
   /movie/{movieId}/ratings:
     get:
       summary: Get movie ratings

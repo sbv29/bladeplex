@@ -1,6 +1,5 @@
 import ImdbLogo from '@app/assets/services/imdb.svg';
 import YoutubeLogo from '@app/assets/services/youtube.svg';
-import Spinner from '@app/assets/spinner.svg';
 import BlocklistModal from '@app/components/BlocklistModal';
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
@@ -10,6 +9,7 @@ import type { PlayButtonLink } from '@app/components/Common/PlayButton';
 import PlayButton from '@app/components/Common/PlayButton';
 import Tag from '@app/components/Common/Tag';
 import Tooltip from '@app/components/Common/Tooltip';
+import CommunityReactions from '@app/components/CommunityReactions';
 import IssueModal from '@app/components/IssueModal';
 import ManageSlideOver from '@app/components/ManageSlideOver';
 import MediaSlider from '@app/components/MediaSlider';
@@ -21,7 +21,7 @@ import useDeepLinks from '@app/hooks/useDeepLinks';
 import useLocale from '@app/hooks/useLocale';
 import useSettings from '@app/hooks/useSettings';
 import useToasts from '@app/hooks/useToasts';
-import { Permission, UserType, useUser } from '@app/hooks/useUser';
+import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
 import ErrorPage from '@app/pages/_error';
 import { sortCrewPriority } from '@app/utils/creditHelpers';
@@ -33,8 +33,6 @@ import {
   CogIcon,
   ExclamationTriangleIcon,
   EyeSlashIcon,
-  MinusCircleIcon,
-  StarIcon,
   TicketIcon,
 } from '@heroicons/react/24/outline';
 import {
@@ -90,12 +88,6 @@ const messages = defineMessages('components.MovieDetails', {
   managemovie: 'Manage Movie',
   imdbscorewithvotes: '{score} on IMDb ({formattedCount} Votes)',
   viewonimdb: 'View on IMDb',
-  watchlistSuccess: '<strong>{title}</strong> added to watchlist successfully!',
-  watchlistDeleted:
-    '<strong>{title}</strong> Removed from watchlist successfully!',
-  watchlistError: 'Something went wrong. Please try again.',
-  removefromwatchlist: 'Remove From Watchlist',
-  addtowatchlist: 'Add To Watchlist',
 });
 
 interface MovieDetailsProps {
@@ -112,10 +104,6 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
   const minStudios = 3;
   const [showMoreStudios, setShowMoreStudios] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
-  const [isUpdating, setIsUpdating] = useState<boolean>(false);
-  const [toggleWatchlist, setToggleWatchlist] = useState<boolean>(
-    !movie?.onUserWatchlist
-  );
   const [isBlocklistUpdating, setIsBlocklistUpdating] =
     useState<boolean>(false);
   const [showBlocklistModal, setShowBlocklistModal] = useState(false);
@@ -270,65 +258,6 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
     data?.watchProviders?.find(
       (provider) => provider.iso_3166_1 === streamingRegion
     )?.flatrate ?? [];
-
-  const onClickWatchlistBtn = async (): Promise<void> => {
-    setIsUpdating(true);
-
-    try {
-      const response = await axios.post('/api/v1/watchlist', {
-        tmdbId: movie?.id,
-        mediaType: MediaType.MOVIE,
-        title: movie?.title,
-      });
-
-      if (response.data) {
-        addToast(
-          <span>
-            {intl.formatMessage(messages.watchlistSuccess, {
-              title: movie?.title,
-              strong: (msg: React.ReactNode) => <strong>{msg}</strong>,
-            })}
-          </span>,
-          { appearance: 'success', autoDismiss: true }
-        );
-      }
-    } catch {
-      addToast(intl.formatMessage(messages.watchlistError), {
-        appearance: 'error',
-        autoDismiss: true,
-      });
-    }
-
-    setIsUpdating(false);
-    setToggleWatchlist((prevState) => !prevState);
-  };
-
-  const onClickDeleteWatchlistBtn = async (): Promise<void> => {
-    setIsUpdating(true);
-    try {
-      await axios.delete(
-        `/api/v1/watchlist/${movie?.id}?mediaType=${MediaType.MOVIE}`
-      );
-
-      addToast(
-        <span>
-          {intl.formatMessage(messages.watchlistDeleted, {
-            title: movie?.title,
-            strong: (msg: React.ReactNode) => <strong>{msg}</strong>,
-          })}
-        </span>,
-        { appearance: 'info', autoDismiss: true }
-      );
-    } catch {
-      addToast(intl.formatMessage(messages.watchlistError), {
-        appearance: 'error',
-        autoDismiss: true,
-      });
-    } finally {
-      setIsUpdating(false);
-      setToggleWatchlist((prevState) => !prevState);
-    }
-  };
 
   const onClickHideItemBtn = async (): Promise<void> => {
     setIsBlocklistUpdating(true);
@@ -542,41 +471,11 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                 </Button>
               </Tooltip>
             )}
-          {data?.mediaInfo?.status !== MediaStatus.BLOCKLISTED &&
-            user?.userType !== UserType.PLEX && (
-              <>
-                {toggleWatchlist ? (
-                  <Tooltip
-                    content={intl.formatMessage(messages.addtowatchlist)}
-                  >
-                    <Button
-                      buttonType={'ghost'}
-                      className="z-40 mr-2"
-                      buttonSize={'md'}
-                      onClick={onClickWatchlistBtn}
-                    >
-                      {isUpdating ? (
-                        <Spinner />
-                      ) : (
-                        <StarIcon className={'text-amber-300'} />
-                      )}
-                    </Button>
-                  </Tooltip>
-                ) : (
-                  <Tooltip
-                    content={intl.formatMessage(messages.removefromwatchlist)}
-                  >
-                    <Button
-                      className="z-40 mr-2"
-                      buttonSize={'md'}
-                      onClick={onClickDeleteWatchlistBtn}
-                    >
-                      {isUpdating ? <Spinner /> : <MinusCircleIcon />}
-                    </Button>
-                  </Tooltip>
-                )}
-              </>
-            )}
+          <CommunityReactions
+            mediaType={MediaType.MOVIE}
+            tmdbId={data.id}
+            variant="actions"
+          />
           <div className="z-20">
             <PlayButton links={mediaLinks} />
           </div>
@@ -989,6 +888,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                 </span>
               </div>
             )}
+            <CommunityReactions mediaType={MediaType.MOVIE} tmdbId={data.id} />
           </div>
         </div>
       </div>
