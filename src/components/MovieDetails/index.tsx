@@ -192,7 +192,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
     mediaLinks.push({
       text: intl.formatMessage(messages.watchtrailer),
       url: trailerUrl,
-      svg: <YoutubeLogo />,
+      svg: <YoutubeLogo className="text-[#ff0000]" />,
     });
   }
 
