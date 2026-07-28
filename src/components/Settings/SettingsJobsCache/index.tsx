@@ -89,6 +89,7 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages(
     'download-sync': 'Download Sync',
     'download-sync-reset': 'Download Sync Reset',
     'image-cache-cleanup': 'Image Cache Cleanup',
+    'imdb-ratings-cache-refresh': 'IMDb Ratings Cache Refresh',
     'process-blocklisted-tags': 'Process Blocklisted Tags',
     editJobSchedule: 'Modify Job',
     jobScheduleEditSaved: 'Job edited successfully!',
@@ -589,11 +590,23 @@ const SettingsJobs = () => {
               .map((cache) => (
                 <tr key={`cache-list-${cache.id}`}>
                   <Table.TD>{cache.name}</Table.TD>
-                  <Table.TD>{intl.formatNumber(cache.stats.hits)}</Table.TD>
-                  <Table.TD>{intl.formatNumber(cache.stats.misses)}</Table.TD>
+                  <Table.TD>
+                    {cache.persistent
+                      ? '—'
+                      : intl.formatNumber(cache.stats.hits)}
+                  </Table.TD>
+                  <Table.TD>
+                    {cache.persistent
+                      ? '—'
+                      : intl.formatNumber(cache.stats.misses)}
+                  </Table.TD>
                   <Table.TD>{intl.formatNumber(cache.stats.keys)}</Table.TD>
-                  <Table.TD>{formatBytes(cache.stats.ksize)}</Table.TD>
-                  <Table.TD>{formatBytes(cache.stats.vsize)}</Table.TD>
+                  <Table.TD>
+                    {cache.persistent ? '—' : formatBytes(cache.stats.ksize)}
+                  </Table.TD>
+                  <Table.TD>
+                    {cache.persistent ? '—' : formatBytes(cache.stats.vsize)}
+                  </Table.TD>
                   <Table.TD alignText="right">
                     <Button
                       buttonType="danger"

@@ -174,11 +174,16 @@ class IMDBRadarrProxy extends ExternalAPI {
    *
    * @param IMDBid Id of IMDB movie
    */
-  public async getMovieRatings(IMDBid: string): Promise<IMDBRating | null> {
+  public async getMovieRatings(
+    IMDBid: string,
+    forceRefresh = false
+  ): Promise<IMDBRating | null> {
     try {
-      const data = await this.get<IMDBRadarrProxyResponse>(
-        `/movie/imdb/${IMDBid}`
-      );
+      const endpoint = `/movie/imdb/${IMDBid}`;
+      if (forceRefresh) {
+        this.removeCache(endpoint);
+      }
+      const data = await this.get<IMDBRadarrProxyResponse>(endpoint);
 
       if (
         !data?.length ||

@@ -3,6 +3,7 @@ import blocklistedTagsProcessor from '@server/job/blocklistedTagsProcessor';
 import availabilitySync from '@server/lib/availabilitySync';
 import downloadTracker from '@server/lib/downloadtracker';
 import ImageProxy from '@server/lib/imageproxy';
+import imdbRatingCache from '@server/lib/imdbRatingCache';
 import refreshToken from '@server/lib/refreshToken';
 import {
   jellyfinFullScanner,
@@ -241,6 +242,25 @@ export const startJobs = (): void => {
       // Clean users avatar image cache
       ImageProxy.clearCache('avatar');
     }),
+  });
+
+  scheduledJobs.push({
+    id: 'imdb-ratings-cache-refresh',
+    name: 'IMDb Ratings Cache Refresh',
+    type: 'process',
+    interval: 'days',
+    cronSchedule: jobs['imdb-ratings-cache-refresh'].schedule,
+    job: schedule.scheduleJob(
+      jobs['imdb-ratings-cache-refresh'].schedule,
+      () => {
+        logger.info('Starting scheduled job: IMDb Ratings Cache Refresh', {
+          label: 'Jobs',
+        });
+        imdbRatingCache.refreshAll();
+      }
+    ),
+    running: () => imdbRatingCache.status().running,
+    cancelFn: () => imdbRatingCache.cancel(),
   });
 
   scheduledJobs.push({

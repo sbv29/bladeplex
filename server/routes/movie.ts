@@ -1,4 +1,3 @@
-import IMDBRadarrProxy from '@server/api/rating/imdbRadarrProxy';
 import RottenTomatoes from '@server/api/rating/rottentomatoes';
 import { type RatingResponse } from '@server/api/ratings';
 import TheMovieDb from '@server/api/themoviedb';
@@ -6,6 +5,7 @@ import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { Watchlist } from '@server/entity/Watchlist';
+import imdbRatingCache from '@server/lib/imdbRatingCache';
 import logger from '@server/logger';
 import { mapMovieDetails } from '@server/models/Movie';
 import { mapMovieResult } from '@server/models/Search';
@@ -190,7 +190,6 @@ movieRoutes.get('/:id/ratings', async (req, res, next) => {
 movieRoutes.get('/:id/ratingscombined', async (req, res, next) => {
   const tmdb = new TheMovieDb();
   const rtapi = new RottenTomatoes();
-  const imdbApi = new IMDBRadarrProxy();
 
   try {
     const movie = await tmdb.getMovie({
@@ -202,10 +201,14 @@ movieRoutes.get('/:id/ratingscombined', async (req, res, next) => {
       Number(movie.release_date.slice(0, 4))
     );
 
-    let imdbRatings;
-    if (movie.imdb_id) {
-      imdbRatings = await imdbApi.getMovieRatings(movie.imdb_id);
-    }
+    const imdbRatings = (
+      await imdbRatingCache.getRatings(
+        [Number(req.params.id)],
+        movie.imdb_id
+          ? new Map([[Number(req.params.id), movie.imdb_id]])
+          : undefined
+      )
+    )[req.params.id];
 
     if (!rtratings && !imdbRatings) {
       return next({

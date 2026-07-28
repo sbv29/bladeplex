@@ -368,6 +368,7 @@ export type JobId =
   | 'jellyfin-recently-added-scan'
   | 'jellyfin-full-scan'
   | 'image-cache-cleanup'
+  | 'imdb-ratings-cache-refresh'
   | 'availability-sync'
   | 'process-blocklisted-tags';
 
@@ -605,6 +606,9 @@ class Settings {
         },
         'image-cache-cleanup': {
           schedule: '0 0 5 * * *',
+        },
+        'imdb-ratings-cache-refresh': {
+          schedule: '0 30 3 * * *',
         },
         'process-blocklisted-tags': {
           schedule: '0 30 1 */7 * *',

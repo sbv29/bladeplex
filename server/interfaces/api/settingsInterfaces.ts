@@ -55,6 +55,7 @@ export interface PublicSettingsResponse {
 export interface CacheItem {
   id: string;
   name: string;
+  persistent?: boolean;
   stats: {
     hits: number;
     misses: number;

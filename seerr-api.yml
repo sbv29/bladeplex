@@ -3189,6 +3189,9 @@ paths:
                         name:
                           type: string
                           example: cache name
+                        persistent:
+                          type: boolean
+                          description: Whether the cache is stored in the database and survives restarts
                         stats:
                           type: object
                           properties:

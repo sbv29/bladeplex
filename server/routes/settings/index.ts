@@ -9,6 +9,7 @@ import { MediaRequest } from '@server/entity/MediaRequest';
 import { User } from '@server/entity/User';
 import type { PlexConnection } from '@server/interfaces/api/plexInterfaces';
 import type {
+  CacheItem,
   LogMessage,
   LogsResultsResponse,
   SettingsAboutResponse,
@@ -17,6 +18,7 @@ import { scheduledJobs } from '@server/job/schedule';
 import type { AvailableCacheIds } from '@server/lib/cache';
 import cacheManager from '@server/lib/cache';
 import ImageProxy from '@server/lib/imageproxy';
+import imdbRatingCache from '@server/lib/imdbRatingCache';
 import { Permission } from '@server/lib/permissions';
 import { jellyfinFullScanner } from '@server/lib/scanners/jellyfin';
 import { plexFullScanner } from '@server/lib/scanners/plex';
@@ -753,11 +755,26 @@ settingsRoutes.post<{ jobId: JobId }>(
 settingsRoutes.get('/cache', async (_req, res) => {
   const cacheManagerCaches = cacheManager.getAllCaches();
 
-  const apiCaches = Object.values(cacheManagerCaches).map((cache) => ({
-    id: cache.id,
-    name: cache.name,
-    stats: cache.getStats(),
-  }));
+  const apiCaches: CacheItem[] = Object.values(cacheManagerCaches).map(
+    (cache) => ({
+      id: cache.id,
+      name: cache.name,
+      stats: cache.getStats(),
+    })
+  );
+
+  apiCaches.push({
+    id: 'imdb-ratings-persistent',
+    name: 'IMDb Ratings (Persistent)',
+    persistent: true,
+    stats: {
+      hits: 0,
+      misses: 0,
+      keys: await imdbRatingCache.count(),
+      ksize: 0,
+      vsize: 0,
+    },
+  });
 
   const tmdbImageCache = await ImageProxy.getImageStats('tmdb');
   const avatarImageCache = await ImageProxy.getImageStats('avatar');
@@ -778,10 +795,25 @@ settingsRoutes.get('/cache', async (_req, res) => {
   });
 });
 
-settingsRoutes.post<{ cacheId: AvailableCacheIds }>(
+settingsRoutes.post<{ cacheId: string }>(
   '/cache/:cacheId/flush',
-  (req, res, next) => {
-    const cache = cacheManager.getCache(req.params.cacheId);
+  async (req, res, next) => {
+    if (req.params.cacheId === 'imdb-ratings-persistent') {
+      if (imdbRatingCache.status().running) {
+        return next({
+          status: 409,
+          message: 'Cannot clear IMDb ratings while a refresh is running.',
+        });
+      }
+      await imdbRatingCache.clear();
+      cacheManager.getCache('imdb').flush();
+      cacheManager.getCache('imdbid').flush();
+      return res.status(204).send();
+    }
+
+    const cache = cacheManager.getCache(
+      req.params.cacheId as AvailableCacheIds
+    );
 
     if (cache) {
       cache.flush();
