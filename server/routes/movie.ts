@@ -210,13 +210,6 @@ movieRoutes.get('/:id/ratingscombined', async (req, res, next) => {
       )
     )[req.params.id];
 
-    if (!rtratings && !imdbRatings) {
-      return next({
-        status: 404,
-        message: 'No ratings found.',
-      });
-    }
-
     const ratings: RatingResponse = {
       ...(rtratings ? { rt: rtratings } : {}),
       ...(imdbRatings ? { imdb: imdbRatings } : {}),
