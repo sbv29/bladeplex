@@ -23,7 +23,10 @@ import {
   MinusCircleIcon,
   StarIcon,
 } from '@heroicons/react/24/outline';
-import { MediaStatus } from '@server/constants/media';
+import {
+  MediaStatus,
+  MediaType as MediaTypeEnum,
+} from '@server/constants/media';
 import type { Watchlist } from '@server/entity/Watchlist';
 import type { MediaType } from '@server/models/Search';
 import axios from 'axios';
@@ -94,7 +97,11 @@ const TitleCard = ({
     },
     [inViewRef]
   );
-  const imdbRating = useImdbRating(id, mediaType === 'movie' && inView);
+  const imdbRating = useImdbRating(
+    id,
+    mediaType === 'tv' ? MediaTypeEnum.TV : MediaTypeEnum.MOVIE,
+    (mediaType === 'movie' || mediaType === 'tv') && inView
+  );
 
   // Just to get the year from the date
   if (year) {

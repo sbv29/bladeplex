@@ -1,3 +1,4 @@
+import ImdbLogo from '@app/assets/services/imdb.svg';
 import Spinner from '@app/assets/spinner.svg';
 import BlocklistModal from '@app/components/BlocklistModal';
 import Badge from '@app/components/Common/Badge';
@@ -11,7 +12,6 @@ import StatusBadgeMini from '@app/components/Common/StatusBadgeMini';
 import Tooltip from '@app/components/Common/Tooltip';
 import CommunityReactions from '@app/components/CommunityReactions';
 import DetailPageTags from '@app/components/DetailPageTags';
-import ExternalLinkBlock from '@app/components/ExternalLinkBlock';
 import IssueModal from '@app/components/IssueModal';
 import ManageSlideOver from '@app/components/ManageSlideOver';
 import MediaSlider from '@app/components/MediaSlider';
@@ -22,6 +22,7 @@ import Slider from '@app/components/Slider';
 import StatusBadge from '@app/components/StatusBadge';
 import Season from '@app/components/TvDetails/Season';
 import useDeepLinks from '@app/hooks/useDeepLinks';
+import useImdbRating from '@app/hooks/useImdbRating';
 import useLocale from '@app/hooks/useLocale';
 import useSettings from '@app/hooks/useSettings';
 import useToasts from '@app/hooks/useToasts';
@@ -86,6 +87,8 @@ const messages = defineMessages('components.TvDetails', {
   productioncountries:
     'Production {countryCount, plural, one {Country} other {Countries}}',
   reportissue: 'Report Issue',
+  imdbscorewithvotes: '{score} on IMDb ({formattedCount} Votes)',
+  viewonimdb: 'View on IMDb',
   manageseries: 'Manage Series',
   seasonstitle: 'Seasons',
   episodeCount: '{episodeCount, plural, one {# Episode} other {# Episodes}}',
@@ -135,6 +138,11 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
       15000
     ),
   });
+  const imdbRating = useImdbRating(
+    data?.id ?? 0,
+    MediaType.TV,
+    data !== undefined
+  );
 
   const sortedCrew = useMemo(
     () => sortCrewPriority(data?.credits.crew ?? []),
@@ -302,6 +310,11 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
       season.seasonNumber === 0 &&
       settings.currentSettings.enableSpecialEpisodes
   );
+  const imdbUrl =
+    imdbRating?.url ??
+    (data.externalIds.imdbId
+      ? `https://www.imdb.com/title/${data.externalIds.imdbId}`
+      : undefined);
 
   const isComplete =
     (showHasSpecials ? seasonCount + 1 : seasonCount) <=
@@ -534,7 +547,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
         show={showManager}
       />
       <div className="media-header">
-        <div className="media-poster">
+        <div className="media-poster relative">
           <CachedImage
             type="tmdb"
             src={
@@ -549,6 +562,19 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
             height={900}
             priority
           />
+          {imdbRating && (
+            <a
+              href={imdbRating.url}
+              className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-md bg-gray-950/80 px-1.5 py-1 text-xs font-semibold text-white shadow-md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ImdbLogo className="w-7 opacity-90" />
+              <span className="opacity-90">
+                {imdbRating.criticsScore.toFixed(1)}
+              </span>
+            </a>
+          )}
         </div>
         <div className="media-title">
           <div className="media-status">
@@ -1094,6 +1120,33 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
         </div>
         <div className="media-overview-right">
           <div className="media-facts">
+            {imdbUrl && (
+              <div className="media-ratings">
+                <a
+                  href={imdbUrl}
+                  className="media-rating whitespace-nowrap"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ImdbLogo className="mr-1 w-6" />
+                  <span>
+                    {imdbRating
+                      ? intl.formatMessage(messages.imdbscorewithvotes, {
+                          score: imdbRating.criticsScore,
+                          formattedCount: intl.formatNumber(
+                            imdbRating.criticsScoreCount,
+                            {
+                              notation: 'compact',
+                              compactDisplay: 'short',
+                              maximumFractionDigits: 1,
+                            }
+                          ),
+                        })
+                      : intl.formatMessage(messages.viewonimdb)}
+                  </span>
+                </a>
+              </div>
+            )}
             {data.originalName &&
               data.originalLanguage !== locale.slice(0, 2) && (
                 <div className="media-fact">
@@ -1254,13 +1307,6 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                 </span>
               </div>
             )}
-            <div className="media-fact">
-              <ExternalLinkBlock
-                mediaType="tv"
-                tmdbId={data.id}
-                tvdbId={data.externalIds.tvdbId}
-              />
-            </div>
             <CommunityReactions mediaType={MediaType.TV} tmdbId={data.id} />
           </div>
         </div>

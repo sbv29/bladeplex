@@ -6887,10 +6887,11 @@ paths:
                       $ref: '#/components/schemas/MovieResult'
   /ratings/imdb/batch:
     post:
-      summary: Get IMDb ratings for movie poster cards
-      description: Returns cached IMDb ratings for up to 40 TMDB movie IDs. Individual lookup failures are returned as null values.
+      summary: Get IMDb ratings for title poster cards
+      description: Returns cached IMDb ratings for up to 40 TMDB movie or TV series IDs. Individual lookup failures are returned as null values.
       tags:
         - movies
+        - tv
       requestBody:
         required: true
         content:
@@ -6900,6 +6901,10 @@ paths:
               required:
                 - tmdbIds
               properties:
+                mediaType:
+                  type: string
+                  enum: [movie, tv]
+                  default: movie
                 tmdbIds:
                   type: array
                   maxItems: 40
@@ -6910,7 +6915,7 @@ paths:
                   example: [550, 680]
       responses:
         '200':
-          description: IMDb ratings keyed by TMDB movie ID
+          description: IMDb ratings keyed by TMDB title ID
           content:
             application/json:
               schema:

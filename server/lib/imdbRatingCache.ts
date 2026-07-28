@@ -1,3 +1,4 @@
+import ImdbApi from '@server/api/rating/imdb';
 import IMDBRadarrProxy, {
   type IMDBRating,
 } from '@server/api/rating/imdbRadarrProxy';
@@ -45,10 +46,11 @@ class ImdbRatingCacheService {
 
   public async getRatings(
     tmdbIds: number[],
-    knownImdbIds: Map<number, string> = new Map()
+    knownImdbIds: Map<number, string> = new Map(),
+    mediaType: MediaType.MOVIE | MediaType.TV = MediaType.MOVIE
   ): Promise<Record<string, IMDBRating | null>> {
     const repository = getRepository(ImdbRatingCache);
-    const cached = await repository.findBy({ tmdbId: In(tmdbIds) });
+    const cached = await repository.findBy({ tmdbId: In(tmdbIds), mediaType });
     const cachedByTmdbId = new Map(cached.map((item) => [item.tmdbId, item]));
     const ratings: Record<string, IMDBRating | null> = {};
 
@@ -60,7 +62,7 @@ class ImdbRatingCacheService {
     const localMedia = uncachedIds.length
       ? await getRepository(Media).findBy({
           tmdbId: In(uncachedIds),
-          mediaType: MediaType.MOVIE,
+          mediaType,
         })
       : [];
     const imdbIds = new Map([
@@ -79,7 +81,8 @@ class ImdbRatingCacheService {
             tmdbId,
             false,
             undefined,
-            imdbIds.get(tmdbId)
+            imdbIds.get(tmdbId),
+            mediaType
           );
           ratings[String(tmdbId)] = this.toRating(item);
         } catch (e) {
@@ -120,7 +123,13 @@ class ImdbRatingCacheService {
         }
 
         try {
-          await this.refreshTmdbId(record.tmdbId, true, record);
+          await this.refreshTmdbId(
+            record.tmdbId,
+            true,
+            record,
+            undefined,
+            record.mediaType
+          );
         } catch (e) {
           logger.warn('Failed to refresh cached IMDb rating', {
             label: 'IMDb Ratings Cache',
@@ -151,13 +160,14 @@ class ImdbRatingCacheService {
     tmdbId: number,
     forceRefresh: boolean,
     existing?: ImdbRatingCache,
-    knownImdbId?: string
+    knownImdbId?: string,
+    mediaType: MediaType.MOVIE | MediaType.TV = MediaType.MOVIE
   ): Promise<ImdbRatingCache> {
     const repository = getRepository(ImdbRatingCache);
     const record =
       existing ??
-      (await repository.findOneBy({ tmdbId })) ??
-      repository.create({ tmdbId, missing: false, failureCount: 0 });
+      (await repository.findOneBy({ tmdbId, mediaType })) ??
+      repository.create({ tmdbId, mediaType, missing: false, failureCount: 0 });
     record.lastAttemptAt = new Date();
 
     try {
@@ -165,10 +175,15 @@ class ImdbRatingCacheService {
         record.imdbId = knownImdbId;
 
         if (!record.imdbId) {
-          const externalIds = await new TheMovieDb().getMovieExternalIds(
-            tmdbId
-          );
-          record.imdbId = externalIds.imdb_id;
+          if (mediaType === MediaType.TV) {
+            const show = await new TheMovieDb().getTvShow({ tvId: tmdbId });
+            record.imdbId = show.external_ids.imdb_id;
+          } else {
+            const externalIds = await new TheMovieDb().getMovieExternalIds(
+              tmdbId
+            );
+            record.imdbId = externalIds.imdb_id;
+          }
         }
       }
 
@@ -178,10 +193,13 @@ class ImdbRatingCacheService {
         return await repository.save(record);
       }
 
-      const rating = await new IMDBRadarrProxy().getMovieRatings(
-        record.imdbId,
-        forceRefresh
-      );
+      const rating =
+        mediaType === MediaType.TV
+          ? await new ImdbApi().getTitleRating(record.imdbId, forceRefresh)
+          : await new IMDBRadarrProxy().getMovieRatings(
+              record.imdbId,
+              forceRefresh
+            );
 
       if (!rating) {
         record.missing = record.ratingTenths == null;

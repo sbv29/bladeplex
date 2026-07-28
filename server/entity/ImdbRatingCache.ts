@@ -1,3 +1,4 @@
+import { MediaType } from '@server/constants/media';
 import { DbAwareColumn, resolveDbType } from '@server/utils/DbColumnHelper';
 import {
   Column,
@@ -5,17 +6,23 @@ import {
   Entity,
   Index,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
+@Unique('UQ_imdb_rating_cache_tmdb_media_type', ['tmdbId', 'mediaType'])
 export class ImdbRatingCache {
   @PrimaryGeneratedColumn()
   public id: number;
 
-  @Column({ unique: true })
+  @Column()
   @Index()
   public tmdbId: number;
+
+  @Column({ type: 'varchar', default: MediaType.MOVIE })
+  @Index()
+  public mediaType: MediaType;
 
   @Column({ type: 'varchar', nullable: true })
   @Index()
