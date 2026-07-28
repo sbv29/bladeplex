@@ -84,7 +84,7 @@ const messages = defineMessages('components.MovieDetails', {
   theatricalrelease: 'Theatrical Release',
   digitalrelease: 'Digital Release',
   physicalrelease: 'Physical Release',
-  reportissue: 'Report an Issue',
+  reportissue: 'Report Issue',
   managemovie: 'Manage Movie',
   imdbscorewithvotes: '{score} on IMDb ({formattedCount} Votes)',
   viewonimdb: 'View on IMDb',
@@ -307,6 +307,16 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
   const showHideButton = hasPermission([Permission.MANAGE_BLOCKLIST], {
     type: 'or',
   });
+  const canReportIssue =
+    (data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+      (settings.currentSettings.movie4kEnabled &&
+        hasPermission([Permission.REQUEST_4K, Permission.REQUEST_4K_MOVIE], {
+          type: 'or',
+        }) &&
+        data.mediaInfo?.status4k === MediaStatus.AVAILABLE)) &&
+    hasPermission([Permission.CREATE_ISSUES, Permission.MANAGE_ISSUES], {
+      type: 'or',
+    });
 
   return (
     <div
@@ -480,6 +490,17 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
             <div className="z-20 flex w-44 justify-center xl:contents [&>div>:first-child]:flex-1 xl:[&>div>:first-child]:flex-none [&>div]:w-full xl:[&>div]:w-auto">
               <PlayButton links={mediaLinks} className="justify-center" />
             </div>
+            {canReportIssue && (
+              <Button
+                buttonType="warning"
+                buttonSize="md"
+                onClick={() => setShowIssueModal(true)}
+                className="w-44 justify-center xl:hidden"
+              >
+                <ExclamationTriangleIcon className="mr-2 h-5 w-5" />
+                <span>{intl.formatMessage(messages.reportissue)}</span>
+              </Button>
+            )}
             <div className="flex w-44 justify-center xl:contents [&>div>:first-child]:flex-1 xl:[&>div>:first-child]:flex-none [&>div]:w-full xl:[&>div]:w-auto">
               <RequestButton
                 mediaType="movie"
@@ -490,21 +511,8 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
               />
             </div>
           </div>
-          {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
-            (settings.currentSettings.movie4kEnabled &&
-              hasPermission(
-                [Permission.REQUEST_4K, Permission.REQUEST_4K_MOVIE],
-                {
-                  type: 'or',
-                }
-              ) &&
-              data.mediaInfo?.status4k === MediaStatus.AVAILABLE)) &&
-            hasPermission(
-              [Permission.CREATE_ISSUES, Permission.MANAGE_ISSUES],
-              {
-                type: 'or',
-              }
-            ) && (
+          {canReportIssue && (
+            <div className="hidden xl:block">
               <Tooltip content={intl.formatMessage(messages.reportissue)}>
                 <Button
                   buttonType="warning"
@@ -514,7 +522,8 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                   <ExclamationTriangleIcon />
                 </Button>
               </Tooltip>
-            )}
+            </div>
+          )}
           {hasPermission(Permission.MANAGE_REQUESTS) &&
             data.mediaInfo &&
             (data.mediaInfo.jellyfinMediaId ||

@@ -85,7 +85,7 @@ const messages = defineMessages('components.TvDetails', {
   streamingproviders: 'Currently Streaming On',
   productioncountries:
     'Production {countryCount, plural, one {Country} other {Countries}}',
-  reportissue: 'Report an Issue',
+  reportissue: 'Report Issue',
   manageseries: 'Manage Series',
   seasonstitle: 'Seasons',
   episodeCount: '{episodeCount, plural, one {# Episode} other {# Episodes}}',
@@ -456,6 +456,18 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
   const showHideButton = hasPermission([Permission.MANAGE_BLOCKLIST], {
     type: 'or',
   });
+  const canReportIssue =
+    (data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+      data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE ||
+      (settings.currentSettings.series4kEnabled &&
+        hasPermission([Permission.REQUEST_4K, Permission.REQUEST_4K_TV], {
+          type: 'or',
+        }) &&
+        (data.mediaInfo?.status4k === MediaStatus.AVAILABLE ||
+          data.mediaInfo?.status4k === MediaStatus.PARTIALLY_AVAILABLE))) &&
+    hasPermission([Permission.CREATE_ISSUES, Permission.MANAGE_ISSUES], {
+      type: 'or',
+    });
 
   return (
     <div
@@ -662,6 +674,17 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
             <div className="z-20 flex w-44 justify-center xl:contents [&>div>:first-child]:flex-1 xl:[&>div>:first-child]:flex-none [&>div]:w-full xl:[&>div]:w-auto">
               <PlayButton links={mediaLinks} className="justify-center" />
             </div>
+            {canReportIssue && (
+              <Button
+                buttonType="warning"
+                buttonSize="md"
+                onClick={() => setShowIssueModal(true)}
+                className="w-44 justify-center xl:hidden"
+              >
+                <ExclamationTriangleIcon className="mr-2 h-5 w-5" />
+                <span>{intl.formatMessage(messages.reportissue)}</span>
+              </Button>
+            )}
             <div className="flex w-44 justify-center xl:contents [&>div>:first-child]:flex-1 xl:[&>div>:first-child]:flex-none [&>div]:w-full xl:[&>div]:w-auto">
               <RequestButton
                 mediaType="tv"
@@ -674,21 +697,8 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
               />
             </div>
           </div>
-          {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
-            data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE ||
-            (settings.currentSettings.series4kEnabled &&
-              hasPermission([Permission.REQUEST_4K, Permission.REQUEST_4K_TV], {
-                type: 'or',
-              }) &&
-              (data.mediaInfo?.status4k === MediaStatus.AVAILABLE ||
-                data?.mediaInfo?.status4k ===
-                  MediaStatus.PARTIALLY_AVAILABLE))) &&
-            hasPermission(
-              [Permission.CREATE_ISSUES, Permission.MANAGE_ISSUES],
-              {
-                type: 'or',
-              }
-            ) && (
+          {canReportIssue && (
+            <div className="hidden xl:block">
               <Tooltip content={intl.formatMessage(messages.reportissue)}>
                 <Button
                   buttonType="warning"
@@ -698,7 +708,8 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                   <ExclamationTriangleIcon />
                 </Button>
               </Tooltip>
-            )}
+            </div>
+          )}
           {hasPermission(Permission.MANAGE_REQUESTS) && data.mediaInfo && (
             <Tooltip content={intl.formatMessage(messages.manageseries)}>
               <Button
