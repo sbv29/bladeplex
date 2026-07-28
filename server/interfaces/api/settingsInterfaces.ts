@@ -1,3 +1,7 @@
+import type {
+  MobileAnnouncementColor,
+  MobileAnnouncementDurationDays,
+} from '@server/lib/settings';
 import type { DnsEntries, DnsStats } from 'dns-caching';
 import type { PaginatedResponse } from './common';
 
@@ -50,6 +54,12 @@ export interface PublicSettingsResponse {
   youtubeUrl: string;
   versionCheck: boolean;
   plexClientIdentifier: string;
+  mobileAnnouncementEnabled: boolean;
+  mobileAnnouncementMessage: string;
+  mobileAnnouncementColor: MobileAnnouncementColor;
+  mobileAnnouncementRevision: number;
+  mobileAnnouncementDurationDays: MobileAnnouncementDurationDays;
+  mobileAnnouncementExpiresAt: string | null;
 }
 
 export interface CacheItem {

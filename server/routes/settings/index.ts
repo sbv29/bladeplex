@@ -23,7 +23,7 @@ import { Permission } from '@server/lib/permissions';
 import { jellyfinFullScanner } from '@server/lib/scanners/jellyfin';
 import { plexFullScanner } from '@server/lib/scanners/plex';
 import type { JobId, Library, MainSettings } from '@server/lib/settings';
-import { getSettings } from '@server/lib/settings';
+import { getSettings, mobileAnnouncementColors } from '@server/lib/settings';
 import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
 import discoverSettingRoutes from '@server/routes/settings/discover';
@@ -41,6 +41,7 @@ import { rescheduleJob } from 'node-schedule';
 import path from 'path';
 import semver from 'semver';
 import { URL } from 'url';
+import { z } from 'zod';
 import metadataRoutes from './metadata';
 import notificationRoutes from './notifications';
 import radarrRoutes from './radarr';
@@ -75,10 +76,98 @@ settingsRoutes.get('/main', (req, res, next) => {
   res.status(200).json(filteredMainSettings(req.user, settings.main));
 });
 
-settingsRoutes.post('/main', async (req, res) => {
+const mobileAnnouncementSchema = z
+  .object({
+    enabled: z.boolean(),
+    message: z.string().trim().max(200),
+    color: z.enum(mobileAnnouncementColors),
+    durationDays: z.union([
+      z.literal(0),
+      z.literal(2),
+      z.literal(7),
+      z.literal(14),
+      z.literal(30),
+    ]),
+  })
+  .refine((value) => !value.enabled || value.message.length > 0, {
+    message: 'An enabled mobile announcement must have a message.',
+    path: ['message'],
+  });
+
+settingsRoutes.post('/main', async (req, res, next) => {
   const settings = getSettings();
 
-  settings.main = merge(settings.main, req.body);
+  const announcementKeys = [
+    'mobileAnnouncementEnabled',
+    'mobileAnnouncementMessage',
+    'mobileAnnouncementColor',
+    'mobileAnnouncementDurationDays',
+  ] as const;
+  const updatesAnnouncement = announcementKeys.some((key) =>
+    Object.prototype.hasOwnProperty.call(req.body, key)
+  );
+
+  if (updatesAnnouncement && req.user?.id !== 1) {
+    return next({
+      status: 403,
+      message: 'Only the owner can update the mobile announcement.',
+    });
+  }
+
+  const announcement = mobileAnnouncementSchema.safeParse({
+    enabled:
+      req.body.mobileAnnouncementEnabled ??
+      settings.main.mobileAnnouncementEnabled,
+    message:
+      req.body.mobileAnnouncementMessage ??
+      settings.main.mobileAnnouncementMessage,
+    color:
+      req.body.mobileAnnouncementColor ?? settings.main.mobileAnnouncementColor,
+    durationDays:
+      req.body.mobileAnnouncementDurationDays ??
+      settings.main.mobileAnnouncementDurationDays,
+  });
+
+  if (!announcement.success) {
+    return next({
+      status: 400,
+      message: announcement.error.issues[0]?.message,
+    });
+  }
+
+  const announcementChanged =
+    updatesAnnouncement &&
+    (announcement.data.enabled !== settings.main.mobileAnnouncementEnabled ||
+      announcement.data.message !== settings.main.mobileAnnouncementMessage ||
+      announcement.data.color !== settings.main.mobileAnnouncementColor ||
+      announcement.data.durationDays !==
+        settings.main.mobileAnnouncementDurationDays);
+
+  const nextSettings = omit(
+    req.body,
+    'mobileAnnouncementRevision',
+    'mobileAnnouncementExpiresAt'
+  );
+  if (updatesAnnouncement) {
+    Object.assign(nextSettings, {
+      mobileAnnouncementEnabled: announcement.data.enabled,
+      mobileAnnouncementMessage: announcement.data.message,
+      mobileAnnouncementColor: announcement.data.color,
+      mobileAnnouncementDurationDays: announcement.data.durationDays,
+      mobileAnnouncementExpiresAt: announcementChanged
+        ? announcement.data.durationDays === 0
+          ? null
+          : new Date(
+              Date.now() + announcement.data.durationDays * 24 * 60 * 60 * 1000
+            ).toISOString()
+        : settings.main.mobileAnnouncementExpiresAt,
+      mobileAnnouncementRevision: announcementChanged
+        ? settings.main.mobileAnnouncementRevision + 1
+        : settings.main.mobileAnnouncementRevision,
+    });
+  }
+
+  settings.main = merge(settings.main, nextSettings);
   await settings.save();
 
   return res.status(200).json(settings.main);

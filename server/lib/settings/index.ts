@@ -157,7 +157,28 @@ export interface MainSettings {
   locale: string;
   youtubeUrl: string;
   versionCheck: boolean;
+  mobileAnnouncementEnabled: boolean;
+  mobileAnnouncementMessage: string;
+  mobileAnnouncementColor: MobileAnnouncementColor;
+  mobileAnnouncementRevision: number;
+  mobileAnnouncementDurationDays: MobileAnnouncementDurationDays;
+  mobileAnnouncementExpiresAt: string | null;
 }
+
+export const mobileAnnouncementColors = [
+  'green',
+  'blue',
+  'purple',
+  'amber',
+  'red',
+  'gray',
+] as const;
+
+export type MobileAnnouncementColor = (typeof mobileAnnouncementColors)[number];
+
+export const mobileAnnouncementDurationOptions = [0, 2, 7, 14, 30] as const;
+export type MobileAnnouncementDurationDays =
+  (typeof mobileAnnouncementDurationOptions)[number];
 
 export interface ProxySettings {
   enabled: boolean;
@@ -217,6 +238,12 @@ interface FullPublicSettings extends PublicSettings {
   youtubeUrl: string;
   versionCheck: boolean;
   plexClientIdentifier: string;
+  mobileAnnouncementEnabled: boolean;
+  mobileAnnouncementMessage: string;
+  mobileAnnouncementColor: MobileAnnouncementColor;
+  mobileAnnouncementRevision: number;
+  mobileAnnouncementDurationDays: MobileAnnouncementDurationDays;
+  mobileAnnouncementExpiresAt: string | null;
 }
 
 export interface NotificationAgentConfig {
@@ -433,6 +460,15 @@ class Settings {
         locale: 'en',
         youtubeUrl: '',
         versionCheck: true,
+        mobileAnnouncementEnabled: true,
+        mobileAnnouncementMessage:
+          'This is a new release, text me if there are issues',
+        mobileAnnouncementColor: 'green',
+        mobileAnnouncementRevision: 1,
+        mobileAnnouncementDurationDays: 7,
+        mobileAnnouncementExpiresAt: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000
+        ).toISOString(),
       },
       plex: {
         name: '',
@@ -743,6 +779,13 @@ class Settings {
       youtubeUrl: this.data.main.youtubeUrl,
       versionCheck: this.data.main.versionCheck,
       plexClientIdentifier: this.data.clientId,
+      mobileAnnouncementEnabled: this.data.main.mobileAnnouncementEnabled,
+      mobileAnnouncementMessage: this.data.main.mobileAnnouncementMessage,
+      mobileAnnouncementColor: this.data.main.mobileAnnouncementColor,
+      mobileAnnouncementRevision: this.data.main.mobileAnnouncementRevision,
+      mobileAnnouncementDurationDays:
+        this.data.main.mobileAnnouncementDurationDays,
+      mobileAnnouncementExpiresAt: this.data.main.mobileAnnouncementExpiresAt,
     };
   }
 

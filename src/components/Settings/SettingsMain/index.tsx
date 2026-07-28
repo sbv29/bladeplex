@@ -78,6 +78,27 @@ const messages = defineMessages('components.Settings.SettingsMain', {
   versionCheckTip: 'Automatically check for new versions on GitHub.',
   validationUrl: 'You must provide a valid URL',
   validationUrlTrailingSlash: 'URL must not end in a trailing slash',
+  mobileAnnouncement: 'Mobile Announcement Banner',
+  mobileAnnouncementDescription:
+    'Show a dismissible announcement above the mobile navigation.',
+  mobileAnnouncementEnabled: 'Enable mobile announcement banner',
+  mobileAnnouncementMessage: 'Banner Message',
+  mobileAnnouncementColor: 'Banner Color',
+  mobileAnnouncementDuration: 'Display Duration',
+  mobileAnnouncementDurationTip:
+    'The schedule restarts whenever the announcement configuration changes.',
+  durationIndefinite: 'Until disabled',
+  durationDays: '{days} days',
+  mobileAnnouncementMessageRequired:
+    'An enabled mobile announcement must have a message.',
+  mobileAnnouncementMessageTooLong:
+    'The mobile announcement cannot exceed 200 characters.',
+  colorGreen: 'Green',
+  colorBlue: 'Blue',
+  colorPurple: 'Purple',
+  colorAmber: 'Amber',
+  colorRed: 'Red',
+  colorGray: 'Gray',
 });
 
 const SettingsMain = () => {
@@ -127,6 +148,16 @@ const SettingsMain = () => {
         intl.formatMessage(messages.validationUrlTrailingSlash),
         (value) => !value || !value.endsWith('/')
       ),
+    mobileAnnouncementMessage: Yup.string()
+      .trim()
+      .max(200, intl.formatMessage(messages.mobileAnnouncementMessageTooLong))
+      .when('mobileAnnouncementEnabled', {
+        is: true,
+        then: (schema) =>
+          schema.required(
+            intl.formatMessage(messages.mobileAnnouncementMessageRequired)
+          ),
+      }),
   });
 
   const regenerate = async () => {
@@ -186,6 +217,13 @@ const SettingsMain = () => {
             cacheImages: data?.cacheImages,
             youtubeUrl: data?.youtubeUrl,
             versionCheck: data?.versionCheck,
+            mobileAnnouncementEnabled: data?.mobileAnnouncementEnabled ?? true,
+            mobileAnnouncementMessage:
+              data?.mobileAnnouncementMessage ??
+              'This is a new release, text me if there are issues',
+            mobileAnnouncementColor: data?.mobileAnnouncementColor ?? 'green',
+            mobileAnnouncementDurationDays:
+              data?.mobileAnnouncementDurationDays ?? 7,
           }}
           enableReinitialize
           validationSchema={MainSettingsSchema}
@@ -209,6 +247,18 @@ const SettingsMain = () => {
                 cacheImages: values.cacheImages,
                 youtubeUrl: values.youtubeUrl,
                 versionCheck: values?.versionCheck,
+                ...(currentUser?.id === 1
+                  ? {
+                      mobileAnnouncementEnabled:
+                        values.mobileAnnouncementEnabled,
+                      mobileAnnouncementMessage:
+                        values.mobileAnnouncementMessage.trim(),
+                      mobileAnnouncementColor: values.mobileAnnouncementColor,
+                      mobileAnnouncementDurationDays: Number(
+                        values.mobileAnnouncementDurationDays
+                      ),
+                    }
+                  : {}),
               });
               mutate('/api/v1/settings/public');
               mutate('/api/v1/status');
@@ -629,6 +679,139 @@ const SettingsMain = () => {
                     />
                   </div>
                 </div>
+                {currentUser?.id === 1 && (
+                  <div className="mt-8 border-t border-gray-700 pt-6">
+                    <div className="mb-4">
+                      <h4 className="text-lg font-semibold text-gray-100">
+                        {intl.formatMessage(messages.mobileAnnouncement)}
+                      </h4>
+                      <p className="mt-1 text-sm text-gray-400">
+                        {intl.formatMessage(
+                          messages.mobileAnnouncementDescription
+                        )}
+                      </p>
+                    </div>
+                    <div className="form-row">
+                      <label
+                        htmlFor="mobileAnnouncementEnabled"
+                        className="checkbox-label"
+                      >
+                        {intl.formatMessage(messages.mobileAnnouncementEnabled)}
+                      </label>
+                      <div className="form-input-area">
+                        <Field
+                          type="checkbox"
+                          id="mobileAnnouncementEnabled"
+                          name="mobileAnnouncementEnabled"
+                          onChange={() => {
+                            setFieldValue(
+                              'mobileAnnouncementEnabled',
+                              !values.mobileAnnouncementEnabled
+                            );
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <label
+                        htmlFor="mobileAnnouncementMessage"
+                        className="text-label"
+                      >
+                        {intl.formatMessage(messages.mobileAnnouncementMessage)}
+                      </label>
+                      <div className="form-input-area">
+                        <div className="form-input-field">
+                          <Field
+                            as="textarea"
+                            rows={3}
+                            maxLength={200}
+                            id="mobileAnnouncementMessage"
+                            name="mobileAnnouncementMessage"
+                          />
+                        </div>
+                        {errors.mobileAnnouncementMessage &&
+                          touched.mobileAnnouncementMessage &&
+                          typeof errors.mobileAnnouncementMessage ===
+                            'string' && (
+                            <div className="error">
+                              {errors.mobileAnnouncementMessage}
+                            </div>
+                          )}
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <label
+                        htmlFor="mobileAnnouncementColor"
+                        className="text-label"
+                      >
+                        {intl.formatMessage(messages.mobileAnnouncementColor)}
+                      </label>
+                      <div className="form-input-area">
+                        <div className="form-input-field">
+                          <Field
+                            as="select"
+                            id="mobileAnnouncementColor"
+                            name="mobileAnnouncementColor"
+                          >
+                            <option value="green">
+                              {intl.formatMessage(messages.colorGreen)}
+                            </option>
+                            <option value="blue">
+                              {intl.formatMessage(messages.colorBlue)}
+                            </option>
+                            <option value="purple">
+                              {intl.formatMessage(messages.colorPurple)}
+                            </option>
+                            <option value="amber">
+                              {intl.formatMessage(messages.colorAmber)}
+                            </option>
+                            <option value="red">
+                              {intl.formatMessage(messages.colorRed)}
+                            </option>
+                            <option value="gray">
+                              {intl.formatMessage(messages.colorGray)}
+                            </option>
+                          </Field>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <label
+                        htmlFor="mobileAnnouncementDurationDays"
+                        className="text-label"
+                      >
+                        {intl.formatMessage(
+                          messages.mobileAnnouncementDuration
+                        )}
+                        <span className="label-tip">
+                          {intl.formatMessage(
+                            messages.mobileAnnouncementDurationTip
+                          )}
+                        </span>
+                      </label>
+                      <div className="form-input-area">
+                        <div className="form-input-field">
+                          <Field
+                            as="select"
+                            id="mobileAnnouncementDurationDays"
+                            name="mobileAnnouncementDurationDays"
+                          >
+                            <option value={0}>
+                              {intl.formatMessage(messages.durationIndefinite)}
+                            </option>
+                            {[2, 7, 14, 30].map((days) => (
+                              <option key={days} value={days}>
+                                {intl.formatMessage(messages.durationDays, {
+                                  days,
+                                })}
+                              </option>
+                            ))}
+                          </Field>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="actions">
                   <div className="flex justify-end">
                     <span className="ml-3 inline-flex rounded-md shadow-sm">

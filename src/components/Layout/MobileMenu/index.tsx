@@ -1,4 +1,5 @@
 import Badge from '@app/components/Common/Badge';
+import MobileAnnouncement from '@app/components/Layout/MobileAnnouncement';
 import { menuMessages } from '@app/components/Layout/Sidebar';
 import useClickOutside from '@app/hooks/useClickOutside';
 import { Permission, useUser } from '@app/hooks/useUser';
@@ -225,7 +226,11 @@ const MobileMenu = ({
           );
         })}
       </Transition>
-      <div className="padding-bottom-safe border-t border-gray-600 bg-gray-800/90 backdrop-blur">
+      <MobileAnnouncement />
+      <div
+        className="padding-bottom-safe border-t border-gray-600 bg-gray-800/90 backdrop-blur"
+        data-testid="mobile-navigation"
+      >
         <div className="flex h-full items-center justify-between px-6 py-4 text-gray-100">
           {filteredLinks
             .slice(0, filteredLinks.length === 5 ? 5 : 4)

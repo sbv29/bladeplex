@@ -263,6 +263,13 @@ CoreApp.getInitialProps = async (initialProps) => {
     youtubeUrl: '',
     versionCheck: true,
     plexClientIdentifier: '',
+    mobileAnnouncementEnabled: true,
+    mobileAnnouncementMessage:
+      'This is a new release, text me if there are issues',
+    mobileAnnouncementColor: 'green',
+    mobileAnnouncementRevision: 1,
+    mobileAnnouncementDurationDays: 7,
+    mobileAnnouncementExpiresAt: null,
   };
 
   if (ctx.res) {

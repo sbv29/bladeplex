@@ -298,6 +298,31 @@ components:
         versionCheck:
           type: boolean
           example: false
+        mobileAnnouncementEnabled:
+          type: boolean
+          default: true
+        mobileAnnouncementMessage:
+          type: string
+          maxLength: 200
+          default: This is a new release, text me if there are issues
+        mobileAnnouncementColor:
+          type: string
+          enum: [green, blue, purple, amber, red, gray]
+          default: green
+        mobileAnnouncementRevision:
+          type: integer
+          readOnly: true
+          minimum: 1
+        mobileAnnouncementDurationDays:
+          type: integer
+          enum: [0, 2, 7, 14, 30]
+          default: 7
+          description: Number of days to display the announcement; 0 means until disabled
+        mobileAnnouncementExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
     NetworkSettings:
       type: object
       properties:
