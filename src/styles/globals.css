@@ -572,6 +572,10 @@
     @apply bg-gradient-to-br from-indigo-400 to-purple-400 bg-clip-text text-transparent;
   }
 
+  .discover-slider-gradient .slider-title > span {
+    @apply bg-gradient-to-br from-indigo-400 to-purple-400 bg-clip-text text-transparent;
+  }
+
   @media all and (display-mode: browser) {
     .pwa-only {
       @apply hidden;

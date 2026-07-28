@@ -445,7 +445,7 @@ const Discover = () => {
               disableUpButton={index === 0}
               disableDownButton={index === sliders.length - 1}
             >
-              {sliderComponent}
+              <div className="discover-slider-gradient">{sliderComponent}</div>
             </DiscoverSliderEdit>
           );
         }
@@ -455,7 +455,12 @@ const Discover = () => {
         }
 
         return (
-          <div key={`discover-slider-${slider.id}`}>{sliderComponent}</div>
+          <div
+            key={`discover-slider-${slider.id}`}
+            className="discover-slider-gradient"
+          >
+            {sliderComponent}
+          </div>
         );
       })}
     </>
