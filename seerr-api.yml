@@ -5644,6 +5644,24 @@ paths:
             type: string
             example: 2023-01-01
         - in: query
+          name: releaseDateGte
+          description: Earliest regional release date to include
+          schema:
+            type: string
+            example: 2023-01-01
+        - in: query
+          name: releaseDateLte
+          description: Latest regional release date to include
+          schema:
+            type: string
+            example: 2023-02-15
+        - in: query
+          name: releaseType
+          description: TMDB release type to include (for example, 4 for digital)
+          schema:
+            type: string
+            example: '4'
+        - in: query
           name: withRuntimeGte
           schema:
             type: number

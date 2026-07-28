@@ -78,6 +78,9 @@ interface DiscoverMovieOptions {
   language?: string;
   primaryReleaseDateGte?: string;
   primaryReleaseDateLte?: string;
+  releaseDateGte?: string;
+  releaseDateLte?: string;
+  releaseType?: string;
   withRuntimeGte?: string;
   withRuntimeLte?: string;
   voteAverageGte?: string;
@@ -608,6 +611,9 @@ class TheMovieDb extends ExternalAPI implements TvShowProvider {
     language = this.locale,
     primaryReleaseDateGte,
     primaryReleaseDateLte,
+    releaseDateGte,
+    releaseDateLte,
+    releaseType,
     originalLanguage,
     genre,
     studio,
@@ -661,6 +667,9 @@ class TheMovieDb extends ExternalAPI implements TvShowProvider {
             !primaryReleaseDateLte && primaryReleaseDateGte
               ? defaultFutureDate
               : primaryReleaseDateLte,
+          'release_date.gte': releaseDateGte,
+          'release_date.lte': releaseDateLte,
+          with_release_type: releaseType,
           with_genres: genre,
           with_companies: studio,
           with_keywords: keywords,

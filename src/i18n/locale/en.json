@@ -132,6 +132,7 @@
   "components.Discover.networks": "Networks",
   "components.Discover.plexwatchlist": "Your Watchlist",
   "components.Discover.popularmovies": "Popular Movies",
+  "components.Discover.newreleases": "New Releases",
   "components.Discover.populartv": "Popular Series",
   "components.Discover.recentlyAdded": "Recently Added",
   "components.DetailPageTags.hidetags": "Hide tags",

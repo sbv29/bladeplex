@@ -115,6 +115,11 @@ const Discover = () => {
   const upcomingDate = new Date(now.getTime() - offset * 60 * 1000)
     .toISOString()
     .split('T')[0];
+  const newReleaseStartDate = new Date(
+    now.getTime() - offset * 60 * 1000 - 45 * 24 * 60 * 60 * 1000
+  )
+    .toISOString()
+    .split('T')[0];
 
   if (!discoverData && !discoverError) {
     return <LoadingSpinner />;
@@ -236,6 +241,17 @@ const Discover = () => {
                 title={intl.formatMessage(sliderTitles.popularmovies)}
                 url="/api/v1/discover/movies"
                 linkUrl="/discover/movies"
+              />
+            );
+            break;
+          case DiscoverSliderType.NEW_RELEASES:
+            sliderComponent = (
+              <MediaSlider
+                sliderKey="new-releases"
+                title={intl.formatMessage(sliderTitles.newreleases)}
+                url="/api/v1/discover/movies"
+                linkUrl={`/discover/movies?releaseDateGte=${newReleaseStartDate}&releaseDateLte=${upcomingDate}&releaseType=4&sortBy=release_date.desc&voteCountGte=10`}
+                extraParams={`releaseDateGte=${newReleaseStartDate}&releaseDateLte=${upcomingDate}&releaseType=4&sortBy=release_date.desc&voteCountGte=10`}
               />
             );
             break;

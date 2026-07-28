@@ -69,6 +69,7 @@ export const genreColorMap: Record<number, [string, string]> = {
 export const sliderTitles = defineMessages('components.Discover', {
   recentrequests: 'Recent Requests',
   popularmovies: 'Popular Movies',
+  newreleases: 'New Releases',
   populartv: 'Popular Series',
   upcomingtv: 'Upcoming Series',
   recentlyAdded: 'Recently Added',
@@ -94,6 +95,9 @@ export const QueryFilterOptions = z.object({
   sortBy: z.string().optional(),
   primaryReleaseDateGte: z.string().optional(),
   primaryReleaseDateLte: z.string().optional(),
+  releaseDateGte: z.string().optional(),
+  releaseDateLte: z.string().optional(),
+  releaseType: z.string().optional(),
   firstAirDateGte: z.string().optional(),
   firstAirDateLte: z.string().optional(),
   studio: z.string().optional(),
@@ -136,6 +140,18 @@ export const prepareFilterValues = (
 
   if (values.primaryReleaseDateLte) {
     filterValues.primaryReleaseDateLte = values.primaryReleaseDateLte;
+  }
+
+  if (values.releaseDateGte) {
+    filterValues.releaseDateGte = values.releaseDateGte;
+  }
+
+  if (values.releaseDateLte) {
+    filterValues.releaseDateLte = values.releaseDateLte;
+  }
+
+  if (values.releaseType) {
+    filterValues.releaseType = values.releaseType;
   }
 
   if (values.firstAirDateGte) {
