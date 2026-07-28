@@ -29,6 +29,8 @@ const messages = defineMessages('components.Login', {
   signinwithjellyfin: 'Use your {mediaServerName} account',
   signinwithoverseerr: 'Use your {applicationTitle} account',
   orsigninwith: 'Or sign in with',
+  localSigninDisclosure: 'Local user? Sign in here',
+  hideLocalSignin: 'Hide local sign-in',
 });
 
 const Login = () => {
@@ -43,6 +45,7 @@ const Login = () => {
   const [mediaServerLogin, setMediaServerLogin] = useState(
     settings.currentSettings.mediaServerLogin
   );
+  const [showLocalLogin, setShowLocalLogin] = useState(false);
 
   // Effect that is triggered when the `authToken` comes back from the Plex OAuth
   // We take the token and attempt to sign in. If we get a success message, we will
@@ -104,7 +107,13 @@ const Login = () => {
     settings.currentSettings.mediaServerType === MediaServerType.EMBY;
   const mediaServerLoginRef = useRef<HTMLDivElement>(null);
   const localLoginRef = useRef<HTMLDivElement>(null);
+  const plexLocalLoginRef = useRef<HTMLDivElement>(null);
   const loginRef = mediaServerLogin ? mediaServerLoginRef : localLoginRef;
+
+  const usePlexFirstLogin =
+    settings.currentSettings.mediaServerType === MediaServerType.PLEX &&
+    settings.currentSettings.mediaServerLogin &&
+    settings.currentSettings.localLogin;
 
   const loginFormVisible =
     (isJellyfin && settings.currentSettings.mediaServerLogin) ||
@@ -115,7 +124,11 @@ const Login = () => {
         <PlexLoginButton
           key="plex"
           isProcessing={isProcessing}
-          onAuthToken={(authToken) => setAuthToken(authToken)}
+          onAuthToken={(authToken) => {
+            setError('');
+            setAuthToken(authToken);
+          }}
+          onError={(message) => setError(message)}
           large={!isJellyfin && !settings.currentSettings.localLogin}
         />
       ) : (
@@ -202,62 +215,123 @@ const Login = () => {
               </div>
             </Transition>
             <div className="px-10 py-8">
-              <SwitchTransition mode="out-in">
-                <CSSTransition
-                  key={mediaServerLogin ? 'ms' : 'local'}
-                  nodeRef={loginRef}
-                  timeout={{ enter: 300, exit: 150 }}
-                  onEntered={() => {
-                    document
-                      .querySelector<HTMLInputElement>('#email, #username')
-                      ?.focus();
-                  }}
-                  classNames={{
-                    enter: 'opacity-0',
-                    enterActive: 'transition-opacity duration-300 opacity-100',
-                    exit: 'opacity-100',
-                    exitActive: 'transition-opacity duration-150 opacity-0',
-                  }}
-                >
-                  <div ref={loginRef} className="button-container">
-                    {isJellyfin &&
-                    (mediaServerLogin ||
-                      !settings.currentSettings.localLogin) ? (
-                      <JellyfinLogin
-                        serverType={settings.currentSettings.mediaServerType}
-                        revalidate={revalidate}
-                      />
-                    ) : (
-                      settings.currentSettings.localLogin && (
-                        <LocalLogin revalidate={revalidate} />
-                      )
-                    )}
-                  </div>
-                </CSSTransition>
-              </SwitchTransition>
-
-              {additionalLoginOptions.length > 0 &&
-                (loginFormVisible ? (
-                  <div className="flex items-center py-5">
-                    <div className="flex-grow border-t border-gray-600" />
-                    <span className="mx-2 flex-shrink text-sm text-gray-400">
-                      {intl.formatMessage(messages.orsigninwith)}
-                    </span>
-                    <div className="flex-grow border-t border-gray-600" />
-                  </div>
-                ) : (
+              {usePlexFirstLogin ? (
+                <>
                   <h2 className="mb-6 text-center text-lg font-bold text-neutral-200">
                     {intl.formatMessage(messages.signinheader)}
                   </h2>
-                ))}
+                  <div className="flex w-full">
+                    <PlexLoginButton
+                      isProcessing={isProcessing}
+                      onAuthToken={(token) => {
+                        setError('');
+                        setAuthToken(token);
+                      }}
+                      onError={(message) => setError(message)}
+                      large
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="mx-auto mt-4 block rounded-md px-3 py-2 text-sm font-medium text-gray-300 transition duration-150 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    data-testid="local-login-toggle"
+                    aria-expanded={showLocalLogin}
+                    aria-controls="local-login-form"
+                    onClick={() => setShowLocalLogin((visible) => !visible)}
+                  >
+                    {intl.formatMessage(
+                      showLocalLogin
+                        ? messages.hideLocalSignin
+                        : messages.localSigninDisclosure
+                    )}
+                  </button>
+                  <Transition
+                    as="div"
+                    show={showLocalLogin}
+                    enter="transition-opacity duration-300"
+                    enterFrom="opacity-0"
+                    enterTo="opacity-100"
+                    leave="transition-opacity duration-150"
+                    leaveFrom="opacity-100"
+                    leaveTo="opacity-0"
+                    afterEnter={() => {
+                      plexLocalLoginRef.current
+                        ?.querySelector<HTMLInputElement>('#email')
+                        ?.focus();
+                    }}
+                  >
+                    <div
+                      ref={plexLocalLoginRef}
+                      id="local-login-form"
+                      className="mt-5 border-t border-gray-600 pt-5"
+                    >
+                      <LocalLogin revalidate={revalidate} />
+                    </div>
+                  </Transition>
+                </>
+              ) : (
+                <>
+                  <SwitchTransition mode="out-in">
+                    <CSSTransition
+                      key={mediaServerLogin ? 'ms' : 'local'}
+                      nodeRef={loginRef}
+                      timeout={{ enter: 300, exit: 150 }}
+                      onEntered={() => {
+                        document
+                          .querySelector<HTMLInputElement>('#email, #username')
+                          ?.focus();
+                      }}
+                      classNames={{
+                        enter: 'opacity-0',
+                        enterActive:
+                          'transition-opacity duration-300 opacity-100',
+                        exit: 'opacity-100',
+                        exitActive: 'transition-opacity duration-150 opacity-0',
+                      }}
+                    >
+                      <div ref={loginRef} className="button-container">
+                        {isJellyfin &&
+                        (mediaServerLogin ||
+                          !settings.currentSettings.localLogin) ? (
+                          <JellyfinLogin
+                            serverType={
+                              settings.currentSettings.mediaServerType
+                            }
+                            revalidate={revalidate}
+                          />
+                        ) : (
+                          settings.currentSettings.localLogin && (
+                            <LocalLogin revalidate={revalidate} />
+                          )
+                        )}
+                      </div>
+                    </CSSTransition>
+                  </SwitchTransition>
 
-              <div
-                className={`flex w-full flex-wrap gap-2 ${
-                  !loginFormVisible ? 'flex-col' : ''
-                }`}
-              >
-                {additionalLoginOptions}
-              </div>
+                  {additionalLoginOptions.length > 0 &&
+                    (loginFormVisible ? (
+                      <div className="flex items-center py-5">
+                        <div className="flex-grow border-t border-gray-600" />
+                        <span className="mx-2 flex-shrink text-sm text-gray-400">
+                          {intl.formatMessage(messages.orsigninwith)}
+                        </span>
+                        <div className="flex-grow border-t border-gray-600" />
+                      </div>
+                    ) : (
+                      <h2 className="mb-6 text-center text-lg font-bold text-neutral-200">
+                        {intl.formatMessage(messages.signinheader)}
+                      </h2>
+                    ))}
+
+                  <div
+                    className={`flex w-full flex-wrap gap-2 ${
+                      !loginFormVisible ? 'flex-col' : ''
+                    }`}
+                  >
+                    {additionalLoginOptions}
+                  </div>
+                </>
+              )}
             </div>
           </>
         </div>

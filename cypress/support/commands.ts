@@ -7,6 +7,12 @@ Cypress.Commands.add('login', (email, password) => {
     () => {
       cy.visit('/login');
 
+      cy.get('body').then(($body) => {
+        if ($body.find('[data-testid=local-login-toggle]').length) {
+          cy.get('[data-testid=local-login-toggle]').click();
+        }
+      });
+
       cy.get('[data-testid=email]').type(email);
       cy.get('[data-testid=password]').type(password);
 
