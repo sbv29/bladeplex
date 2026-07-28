@@ -517,7 +517,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                 <Button
                   buttonType="warning"
                   onClick={() => setShowIssueModal(true)}
-                  className="ml-2 first:ml-0"
+                  className="ml-2"
                 >
                   <ExclamationTriangleIcon />
                 </Button>
