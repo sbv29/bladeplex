@@ -243,7 +243,7 @@
   "components.LanguageSelector.originalLanguageDefault": "All Languages",
   "components.Layout.LanguagePicker.displaylanguage": "Display Language",
   "components.Layout.MobileAnnouncement.dismiss": "Dismiss announcement",
-  "components.Layout.SearchInput.searchPlaceholder": "Search Movies & Series",
+  "components.Layout.SearchInput.searchPlaceholder": "Search Movies and TV Shows",
   "components.Layout.Sidebar.blocklist": "Blocklist",
   "components.Layout.Sidebar.browsemovies": "Movies",
   "components.Layout.Sidebar.browsetv": "Series",
