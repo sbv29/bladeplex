@@ -19,6 +19,21 @@ export interface LogsResultsResponse extends PaginatedResponse {
 
 export interface SettingsAboutResponse {
   version: string;
+  bladeplexVersion: string;
+  commitTag: string;
+  commit: string;
+  branch: string;
+  nodeVersion: string;
+  environment: string;
+  deploymentType: 'docker' | 'local';
+  databaseType: 'postgres' | 'sqlite';
+  upstreamVersion?: string;
+  latestUpstreamVersion?: string;
+  upstreamStatus:
+    | 'up-to-date'
+    | 'update-available'
+    | 'unavailable'
+    | 'disabled';
   totalRequests: number;
   totalMediaItems: number;
   tz?: string;
