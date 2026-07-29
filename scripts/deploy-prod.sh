@@ -177,8 +177,18 @@ if container_exists "${CONTAINER_NAME}"; then
   if docker image inspect "${rollback_image}" >/dev/null 2>&1; then
     die "Rollback tag ${rollback_image} already exists; refusing to overwrite it."
   fi
-  docker image tag "${current_image_id}" "${rollback_image}"
-  log "Preserved the current production image as ${rollback_image}."
+
+  if docker image inspect "${current_image_id}" >/dev/null 2>&1; then
+    docker image tag "${current_image_id}" "${rollback_image}"
+    log "Preserved the current production image as ${rollback_image}."
+  else
+    warn "The running container image ${current_image_id} is no longer available in Docker's image store."
+    docker commit "${CONTAINER_NAME}" "${rollback_image}" >/dev/null
+    log "Created rollback image ${rollback_image} from the running ${CONTAINER_NAME} container."
+  fi
+
+  docker image inspect "${rollback_image}" >/dev/null 2>&1 ||
+    die "Rollback image ${rollback_image} could not be verified."
 else
   warn "No existing ${CONTAINER_NAME} container was found; automatic rollback is unavailable."
 fi
