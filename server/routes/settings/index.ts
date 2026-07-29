@@ -1,9 +1,10 @@
+import GithubAPI from '@server/api/github';
 import JellyfinAPI from '@server/api/jellyfin';
 import PlexAPI from '@server/api/plexapi';
 import PlexTvAPI from '@server/api/plextv';
 import TautulliAPI from '@server/api/tautulli';
 import { ApiErrorCode } from '@server/constants/error';
-import { getRepository } from '@server/datasource';
+import { getRepository, isPgsql } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
 import { User } from '@server/entity/User';
@@ -29,7 +30,15 @@ import { isAuthenticated } from '@server/middleware/auth';
 import discoverSettingRoutes from '@server/routes/settings/discover';
 import { ApiError } from '@server/types/error';
 import { appDataPath } from '@server/utils/appDataVolume';
-import { getAppVersion } from '@server/utils/appVersion';
+import {
+  getAppVersion,
+  getBladePlexVersion,
+  getBuildBranch,
+  getBuildCommit,
+  getCommitTag,
+  getDeploymentType,
+  getUpstreamVersion,
+} from '@server/utils/appVersion';
 import { dnsCache } from '@server/utils/dnsCache';
 import { getHostname } from '@server/utils/getHostname';
 import type { DnsEntries, DnsStats } from 'dns-caching';
@@ -940,15 +949,49 @@ settingsRoutes.post(
   }
 );
 
-settingsRoutes.get('/about', async (req, res) => {
+settingsRoutes.get('/about', async (_req, res) => {
   const mediaRepository = getRepository(Media);
   const mediaRequestRepository = getRepository(MediaRequest);
+  const settings = getSettings();
 
   const totalMediaItems = await mediaRepository.count();
   const totalRequests = await mediaRequestRepository.count();
+  const upstreamVersion = getUpstreamVersion();
+  let latestUpstreamVersion: string | undefined;
+  let upstreamStatus: SettingsAboutResponse['upstreamStatus'] = settings
+    .fullPublicSettings.versionCheck
+    ? 'unavailable'
+    : 'disabled';
+
+  if (settings.fullPublicSettings.versionCheck && upstreamVersion) {
+    const releases = await new GithubAPI().getSeerrReleases({ take: 1 });
+    const latestRelease = releases[0];
+    const currentSemver = semver.coerce(upstreamVersion);
+    const latestSemver = latestRelease
+      ? semver.coerce(latestRelease.tag_name || latestRelease.name)
+      : null;
+
+    if (latestRelease && currentSemver && latestSemver) {
+      latestUpstreamVersion = latestRelease.tag_name || latestRelease.name;
+      upstreamStatus = semver.gt(latestSemver, currentSemver)
+        ? 'update-available'
+        : 'up-to-date';
+    }
+  }
 
   return res.status(200).json({
     version: getAppVersion(),
+    bladeplexVersion: getBladePlexVersion(),
+    commitTag: getCommitTag(),
+    commit: getBuildCommit(),
+    branch: getBuildBranch(),
+    nodeVersion: process.version,
+    environment: process.env.NODE_ENV ?? 'development',
+    deploymentType: getDeploymentType(),
+    databaseType: isPgsql ? 'postgres' : 'sqlite',
+    upstreamVersion,
+    latestUpstreamVersion,
+    upstreamStatus,
     totalMediaItems,
     totalRequests,
     tz: process.env.TZ,

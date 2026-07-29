@@ -19,8 +19,8 @@ const ReactMarkdown = dynamic<any>(() => import('react-markdown'), {
 });
 
 const messages = defineMessages('components.Settings.SettingsAbout.Releases', {
-  releases: 'Releases',
-  releasedataMissing: 'Release data is currently unavailable.',
+  releases: 'Upstream Seerr Releases',
+  releasedataMissing: 'Seerr release data is currently unavailable.',
   versionChangelog: '{version} Changelog',
   viewongithub: 'View on GitHub',
   latestversion: 'Latest',

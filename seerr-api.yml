@@ -3996,6 +3996,43 @@ paths:
                   version:
                     type: string
                     example: '1.0.0'
+                  bladeplexVersion:
+                    type: string
+                    example: '2c0cd772-main'
+                  commitTag:
+                    type: string
+                    example: '2c0cd772-main'
+                  commit:
+                    type: string
+                    example: '2c0cd772'
+                  branch:
+                    type: string
+                    example: 'main'
+                  nodeVersion:
+                    type: string
+                    example: 'v22.22.2'
+                  environment:
+                    type: string
+                    example: 'production'
+                  deploymentType:
+                    type: string
+                    enum: [docker, local]
+                  databaseType:
+                    type: string
+                    enum: [postgres, sqlite]
+                  upstreamVersion:
+                    type: string
+                    example: 'v3.4.0'
+                  latestUpstreamVersion:
+                    type: string
+                    example: 'v3.4.0'
+                  upstreamStatus:
+                    type: string
+                    enum:
+                      - up-to-date
+                      - update-available
+                      - unavailable
+                      - disabled
                   totalRequests:
                     type: number
                     example: 100
