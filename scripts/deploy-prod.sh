@@ -9,8 +9,10 @@ readonly CONTAINER_NAME="bladeplex"
 readonly IMAGE_NAME="bladeplex:latest"
 readonly CONFIG_PATH="/opt/stacks/seerr/config"
 readonly HTTP_URL="http://127.0.0.1:5055"
+readonly EXISTING_ROLLBACK_CONTAINER="bladeplex-old"
 
 skip_fetch=false
+allow_existing_rollback=false
 deployment_started=false
 rollback_image=""
 
@@ -34,6 +36,36 @@ die() {
 
 container_exists() {
   docker container inspect "$1" >/dev/null 2>&1
+}
+
+select_existing_rollback() {
+  local existing_image container_tag image_tag
+
+  if ! container_exists "${EXISTING_ROLLBACK_CONTAINER}"; then
+    warn "Existing rollback container '${EXISTING_ROLLBACK_CONTAINER}' was not found."
+    return 1
+  fi
+
+  existing_image="$(docker inspect --format '{{.Config.Image}}' \
+    "${EXISTING_ROLLBACK_CONTAINER}")" || return 1
+  if ! docker image inspect "${existing_image}" >/dev/null 2>&1; then
+    warn "Image ${existing_image} for ${EXISTING_ROLLBACK_CONTAINER} cannot be inspected."
+    return 1
+  fi
+
+  container_tag="$(docker inspect "${EXISTING_ROLLBACK_CONTAINER}" \
+    --format '{{range .Config.Env}}{{println .}}{{end}}' |
+    sed -n 's/^COMMIT_TAG=//p')"
+  image_tag="$(docker image inspect "${existing_image}" \
+    --format '{{range .Config.Env}}{{println .}}{{end}}' |
+    sed -n 's/^COMMIT_TAG=//p')"
+  if [[ -z "${container_tag}" || "${container_tag}" != "${image_tag}" ]]; then
+    warn "Existing rollback COMMIT_TAG is missing or does not match its image."
+    return 1
+  fi
+
+  log "Existing rollback container ${EXISTING_ROLLBACK_CONTAINER} has COMMIT_TAG=${container_tag}."
+  rollback_image="${existing_image}"
 }
 
 wait_for_http() {
@@ -130,11 +162,14 @@ on_error() {
 
 trap on_error ERR
 
-case "${1:-}" in
-  '') ;;
-  --skip-fetch) skip_fetch=true ;;
-  *) die "Usage: $0 [--skip-fetch]" ;;
-esac
+while (($# > 0)); do
+  case "$1" in
+    --skip-fetch) skip_fetch=true ;;
+    --allow-existing-rollback) allow_existing_rollback=true ;;
+    *) die "Usage: $0 [--skip-fetch] [--allow-existing-rollback]" ;;
+  esac
+  shift
+done
 
 cd "${REPO_DIR}"
 
@@ -167,11 +202,12 @@ log "Building ${IMAGE_NAME} from ${full_hash} with COMMIT_TAG=${commit_tag}."
 COMMIT_TAG="${commit_tag}" docker compose -f "${COMPOSE_FILE}" build bladeplex
 validate_image_metadata "${IMAGE_NAME}" "${commit_tag}"
 
-if container_exists bladeplex-old; then
-  warn "Existing rollback container 'bladeplex-old' was found and will not be modified."
+if container_exists "${EXISTING_ROLLBACK_CONTAINER}"; then
+  warn "Existing rollback container '${EXISTING_ROLLBACK_CONTAINER}' was found and will not be modified."
 fi
 
 if container_exists "${CONTAINER_NAME}"; then
+  rollback_preserved=false
   current_image_id="$(docker inspect --format '{{.Image}}' "${CONTAINER_NAME}")"
   rollback_image="bladeplex:rollback-${timestamp}"
   if docker image inspect "${rollback_image}" >/dev/null 2>&1; then
@@ -179,16 +215,32 @@ if container_exists "${CONTAINER_NAME}"; then
   fi
 
   if docker image inspect "${current_image_id}" >/dev/null 2>&1; then
-    docker image tag "${current_image_id}" "${rollback_image}"
-    log "Preserved the current production image as ${rollback_image}."
+    if docker image tag "${current_image_id}" "${rollback_image}" &&
+      docker image inspect "${rollback_image}" >/dev/null 2>&1; then
+      rollback_preserved=true
+      log "Preserved the current production image as ${rollback_image}."
+    fi
   else
     warn "The running container image ${current_image_id} is no longer available in Docker's image store."
-    docker commit "${CONTAINER_NAME}" "${rollback_image}" >/dev/null
-    log "Created rollback image ${rollback_image} from the running ${CONTAINER_NAME} container."
+    if docker commit "${CONTAINER_NAME}" "${rollback_image}" >/dev/null &&
+      docker image inspect "${rollback_image}" >/dev/null 2>&1; then
+      rollback_preserved=true
+      log "Created rollback image ${rollback_image} from the running ${CONTAINER_NAME} container."
+    fi
   fi
 
-  docker image inspect "${rollback_image}" >/dev/null 2>&1 ||
-    die "Rollback image ${rollback_image} could not be verified."
+  if [[ "${rollback_preserved}" != true ]]; then
+    warn "The current production container could not be preserved as a rollback image."
+    rollback_image=""
+    select_existing_rollback ||
+      die "Rollback preservation failed and no valid existing rollback is available."
+
+    if [[ "${allow_existing_rollback}" != true ]]; then
+      die "Rollback preservation failed. Re-run with --allow-existing-rollback to explicitly use ${EXISTING_ROLLBACK_CONTAINER}."
+    fi
+
+    warn "Override enabled: rollback will use ${EXISTING_ROLLBACK_CONTAINER} via image ${rollback_image}."
+  fi
 else
   warn "No existing ${CONTAINER_NAME} container was found; automatic rollback is unavailable."
 fi
