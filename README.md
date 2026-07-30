@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <img src="./public/BLADE30.svg" alt="BladePlex" width="180">
 </p>
@@ -65,7 +67,11 @@ BladePlex is then available at [http://localhost:5055](http://localhost:5055) by
 
 ## Preview
 
+Seerr:
 <img src="./public/preview.jpg" alt="BladePlex application preview" />
+
+BladePlex:
+<img width="1694" height="784" alt="image" src="https://github.com/user-attachments/assets/8e45262f-2f3b-418c-964b-6906c867883b" />
 
 ## Migrating from Overseerr/Jellyseerr to BladePlex
 
