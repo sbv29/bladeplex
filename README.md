@@ -3,8 +3,6 @@
 </p>
 
 <p align="center">
-<img src="https://github.com/YOURNAME/bladeplex/actions/workflows/release.yml/badge.svg" alt="BladePlex Release" />
-<img src="https://github.com/YOURNAME/bladeplex/actions/workflows/ci.yml/badge.svg" alt="BladePlex CI">
 </p>
 
 <p align="center">
