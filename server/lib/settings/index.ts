@@ -436,7 +436,7 @@ class Settings {
       main: {
         apiKey: '',
         mdblistApiKey: '',
-        applicationTitle: 'Seerr',
+        applicationTitle: 'BladePlex',
         applicationUrl: '',
         cacheImages: false,
         defaultPermissions: Permission.REQUEST,
