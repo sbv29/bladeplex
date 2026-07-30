@@ -66,12 +66,14 @@ docker compose up --detach --build
 BladePlex is then available at [http://localhost:5055](http://localhost:5055) by default. Persistent application data is stored through the `config` mount defined in [`docker-compose.yml`](./docker-compose.yml); review that file before deploying to production.
 
 ## Preview
+BladePlex (new):
+<img width="1694" height="784" alt="image" src="https://github.com/user-attachments/assets/8e45262f-2f3b-418c-964b-6906c867883b" />
 
-Seerr:
+
+Seerr (original):
 <img src="./public/preview.jpg" alt="BladePlex application preview" />
 
-BladePlex:
-<img width="1694" height="784" alt="image" src="https://github.com/user-attachments/assets/8e45262f-2f3b-418c-964b-6906c867883b" />
+
 
 ## Migrating from Overseerr/Jellyseerr to BladePlex
 
