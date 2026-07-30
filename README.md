@@ -4,7 +4,7 @@
   <img src="./public/BLADE30.svg" alt="BladePlex" width="180">
 </p>
 
-<h1 align="center">BladePlex</h1>
+<h1 align="center">BladePlex v3.0</h1>
 
 <p align="center">
   A personalized media request and discovery experience built on
