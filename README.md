@@ -98,11 +98,12 @@ Our [Code of Conduct](./CODE_OF_CONDUCT.md) applies to project participation.
 
 Contributions are welcome. Read the [Contribution Guide](./CONTRIBUTING.md), open an issue for larger changes, and submit a focused pull request against this repository.
 
-## Credits and Contributors ✨
+## BladePlex Contributors ✨
 
-BladePlex would not exist without [Seerr](https://github.com/seerr-team/seerr) and its contributors. Seerr itself brings together the work and communities of Overseerr and Jellyseerr.
+Thank you to everyone who has contributed directly to BladePlex.
 
-[![Seerr Contributors](https://opencollective.com/seerr/contributors.svg?width=890)](https://opencollective.com/seerr/#backers)
+<a href="https://github.com/sbv29/bladeplex/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=sbv29/bladeplex" alt="BladePlex contributors">
+</a>
 
-[![Become a Seerr Backer](https://opencollective.com/seerr/backers.svg)](https://opencollective.com/seerr/#backers)
-[![Become a Seerr Sponsor](https://opencollective.com/seerr/sponsors.svg)](https://opencollective.com/seerr/#sponsors)
+BladePlex is built on [Seerr](https://github.com/seerr-team/seerr), whose contributors—and the Overseerr and Jellyseerr communities before them—made this project possible.
