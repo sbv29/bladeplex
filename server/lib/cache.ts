@@ -11,6 +11,7 @@ export type AvailableCacheIds =
   | 'plexguid'
   | 'plextv'
   | 'plexwatchlist'
+  | 'mdblist'
   | 'tvdb';
 
 const DEFAULT_TTL = 300;
@@ -76,6 +77,10 @@ class CacheManager {
       checkPeriod: 60,
     }),
     plexwatchlist: new Cache('plexwatchlist', 'Plex Watchlist'),
+    mdblist: new Cache('mdblist', 'MDBList API', {
+      stdTtl: 10800,
+      checkPeriod: 60 * 30,
+    }),
     tvdb: new Cache('tvdb', 'The TVDB API', {
       stdTtl: 21600,
       checkPeriod: 60 * 30,

@@ -6,6 +6,7 @@ import { Session } from '@server/entity/Session';
 import { User } from '@server/entity/User';
 import { initI18n } from '@server/i18n';
 import { startJobs } from '@server/job/schedule';
+import { bootstrapCustomListSliders } from '@server/lib/customLists';
 import notificationManager from '@server/lib/notifications';
 import DiscordAgent from '@server/lib/notifications/agents/discord';
 import EmailAgent from '@server/lib/notifications/agents/email';
@@ -153,6 +154,7 @@ app
 
     // Bootstrap Discovery Sliders
     await DiscoverSlider.bootstrapSliders();
+    await bootstrapCustomListSliders();
 
     const server = express();
     if (settings.network.trustProxy) {

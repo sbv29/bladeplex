@@ -255,6 +255,33 @@ const Discover = () => {
               />
             );
             break;
+          case DiscoverSliderType.MDBLIST_JUSTWATCH_STREAMING_CHART_MOVIES:
+            sliderComponent = (
+              <MediaSlider
+                sliderKey="mdblist-justwatch-streaming-chart-movies"
+                title={intl.formatMessage(
+                  sliderTitles.mdblistJustwatchStreamingChartMovies
+                )}
+                url="/api/v1/discover/mdblist/justwatch-streaming-charts/movies"
+                linkUrl="/discover/movies/mdblist-streaming"
+                hideWhenEmpty
+              />
+            );
+            break;
+          case DiscoverSliderType.MDBLIST_CUSTOM_MOVIES:
+            sliderComponent = slider.data ? (
+              <MediaSlider
+                sliderKey={`mdblist-custom-movies-${slider.data}`}
+                title={
+                  slider.title ??
+                  intl.formatMessage(sliderTitles.mdblistCustomMovies)
+                }
+                url={`/api/v1/discover/mdblist/lists/${slider.data}/movies`}
+                linkUrl={`/discover/movies/mdblist/${slider.data}`}
+                hideWhenEmpty
+              />
+            ) : null;
+            break;
           case DiscoverSliderType.MOVIE_GENRES:
             sliderComponent = <MovieGenreSlider />;
             break;
