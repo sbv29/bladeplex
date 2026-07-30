@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type CustomListMediaType = 'movie';
+export type CustomListMediaType = 'movie' | 'tv';
 export type CustomListProvider = 'mdblist';
 
 @Entity()

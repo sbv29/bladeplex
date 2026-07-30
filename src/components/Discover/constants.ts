@@ -73,6 +73,7 @@ export const sliderTitles = defineMessages('components.Discover', {
   mdblistJustwatchStreamingChartMovies:
     'United States Daily Streaming Charts: Movies',
   mdblistCustomMovies: 'MDBList Movies',
+  mdblistCustomTv: 'MDBList Series',
   populartv: 'Popular Series',
   upcomingtv: 'Upcoming Series',
   recentlyAdded: 'Recently Added',

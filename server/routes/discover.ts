@@ -142,6 +142,49 @@ discoverRoutes.get('/mdblist/lists/:listId/movies', async (req, res) => {
   }
 });
 
+discoverRoutes.get('/mdblist/lists/:listId/tv', async (req, res) => {
+  const listId = Number(req.params.listId);
+  const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+  if (!Number.isSafeInteger(listId) || listId <= 0) {
+    return res.status(404).json({ message: 'Custom list not found.' });
+  }
+
+  const list = await getRepository(CustomList).findOne({
+    where: { id: listId, provider: 'mdblist', mediaType: 'tv' },
+  });
+  if (!list) {
+    return res.status(404).json({ message: 'Custom list not found.' });
+  }
+
+  try {
+    const provider = new MdblistProvider({
+      list: createMdblistListReference(list),
+      mediaType: 'tv',
+    });
+    const resultPage = await provider.getStreamingChartPage({
+      tmdb: createTmdbWithRegionLanguage(req.user),
+      user: req.user,
+      language: req.locale,
+      page,
+    });
+    return res.status(200).json({ ...resultPage, title: list.title });
+  } catch (error) {
+    logger.warn('Unable to prepare an MDBList custom TV list', {
+      label: 'MDBList',
+      listId,
+      errorType:
+        error instanceof Error ? error.constructor.name : 'UnknownError',
+    });
+    return res.status(200).json({
+      page: 1,
+      totalPages: 1,
+      totalResults: 0,
+      results: [],
+      title: list.title,
+    });
+  }
+});
+
 discoverRoutes.get(
   '/mdblist/justwatch-streaming-charts/movies',
   async (req, res) => {

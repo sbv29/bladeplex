@@ -46,6 +46,19 @@ beforeEach(async () => {
       itemCount: 1,
     })
   );
+  await getRepository(CustomList).save(
+    new CustomList({
+      id: 43,
+      provider: 'mdblist',
+      listType: 'official',
+      title: 'MovieMeter Shows',
+      sourceUrl: 'https://mdblist.com/lists/official/shows/moviemeter',
+      username: '',
+      slug: 'moviemeter',
+      mediaType: 'tv',
+      itemCount: 1,
+    })
+  );
 });
 
 afterEach(() => {
@@ -108,6 +121,29 @@ describe('custom MDBList discovery route', () => {
       results: [],
       title: 'Weekend Movies',
     });
+  });
+
+  it('returns a configured TV list through the TV endpoint', async () => {
+    mock.method(
+      MdblistProvider.prototype,
+      'getStreamingChartPage',
+      async () => ({
+        page: 1,
+        totalPages: 1,
+        totalResults: 1,
+        results: [{ id: 1399, mediaType: 'tv', mdblistRank: 1 }],
+      })
+    );
+    const agent = await login();
+    const response = await agent.get('/discover/mdblist/lists/43/tv');
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.title, 'MovieMeter Shows');
+    assert.equal(response.body.results[0].mediaType, 'tv');
+    assert.equal(
+      (await agent.get('/discover/mdblist/lists/43/movies')).status,
+      404
+    );
   });
 
   it('returns 404 for an unknown list identifier', async () => {

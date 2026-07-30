@@ -21,7 +21,7 @@ import useSWR, { mutate as globalMutate } from 'swr';
 const messages = defineMessages('components.Settings.SettingsCustomLists', {
   title: 'Custom Lists',
   description:
-    'Add public or official MDBList movie lists as native Discover sliders with full-page views.',
+    'Add public or official MDBList movie and show lists as native Discover sliders with full-page views.',
   apiKeyRequired: 'Configure an MDBList API key in General settings first.',
   url: 'MDBList URL',
   urlPlaceholder: 'https://mdblist.com/lists/user/list-name',
@@ -33,7 +33,7 @@ const messages = defineMessages('components.Settings.SettingsCustomLists', {
   adding: 'Adding…',
   preview: 'List Preview',
   itemCount:
-    '{count, plural, one {# movie} other {# movies}} reported by MDBList',
+    '{count, plural, one {# item} other {# items}} reported by MDBList',
   noLists: 'No custom lists have been added yet.',
   enabled: 'Visible',
   disabled: 'Hidden',
@@ -59,6 +59,7 @@ interface CustomListItem {
   sourceUrl: string;
   listType: 'official' | 'public';
   itemCount: number;
+  mediaType: 'movie' | 'tv';
   discoverSlider: {
     id: number;
     enabled: boolean;
@@ -77,6 +78,7 @@ interface ListPreview {
   title: string;
   providerTitle: string;
   itemCount: number;
+  mediaType: 'movie' | 'tv';
   preview: {
     rank: number;
     title: string;

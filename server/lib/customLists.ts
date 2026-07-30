@@ -17,9 +17,13 @@ export const bootstrapCustomListSliders = async (): Promise<void> => {
   let nextOrder = Number(maximumOrder?.max ?? -1) + 1;
 
   for (const customList of customLists) {
+    const sliderType =
+      customList.mediaType === 'tv'
+        ? DiscoverSliderType.MDBLIST_CUSTOM_TV
+        : DiscoverSliderType.MDBLIST_CUSTOM_MOVIES;
     const existingSlider = await sliderRepository.findOne({
       where: {
-        type: DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
+        type: sliderType,
         data: String(customList.id),
       },
     });
@@ -34,7 +38,7 @@ export const bootstrapCustomListSliders = async (): Promise<void> => {
 
     await sliderRepository.save(
       new DiscoverSlider({
-        type: DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
+        type: sliderType,
         title: customList.title,
         data: String(customList.id),
         enabled: true,

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 
-import type { MdblistMovieItem } from '@server/api/mdblist/interfaces';
+import type {
+  MdblistMovieItem,
+  MdblistShowItem,
+} from '@server/api/mdblist/interfaces';
 import {
   MdblistListItemsResponseSchema,
   MdblistListMetadataSchema,
@@ -42,6 +45,30 @@ const movieDetails = (id: number) =>
     backdrop_path: null,
     poster_path: `/movie-${id}.jpg`,
   }) as unknown as Awaited<ReturnType<TheMovieDb['getMovie']>>;
+
+const sourceShow = (rank: number, tmdbId: number): MdblistShowItem => ({
+  rank,
+  adult: 0,
+  ids: { tmdb: tmdbId },
+  mediatype: 'show',
+});
+
+const showDetails = (id: number) =>
+  ({
+    id,
+    first_air_date: '2026-01-01',
+    genres: [],
+    name: `Show ${id}`,
+    origin_country: ['US'],
+    original_language: 'en',
+    original_name: `Show ${id}`,
+    overview: '',
+    popularity: 1,
+    vote_average: 8,
+    vote_count: 20,
+    backdrop_path: null,
+    poster_path: `/show-${id}.jpg`,
+  }) as unknown as Awaited<ReturnType<TheMovieDb['getTvShow']>>;
 
 const createTmdb = ({
   imdbResults = {},
@@ -113,6 +140,33 @@ describe('MdblistProvider', () => {
         { id: 10, mdblistRank: 1 },
         { id: 20, mdblistRank: 2 },
         { id: 30, mdblistRank: 3 },
+      ]
+    );
+  });
+
+  it('fetches and hydrates ranked TV shows', async () => {
+    const provider = new MdblistProvider({
+      apiKey: 'configured',
+      mediaType: 'tv',
+      list: { type: 'official', slug: 'moviemeter' },
+      client: {
+        getShowList: async () => [sourceShow(2, 20), sourceShow(1, 10)],
+      },
+    });
+    const tmdb = {
+      getTvShow: async ({ tvId }: { tvId: number }) => showDetails(tvId),
+    } as unknown as TheMovieDb;
+
+    const results = await provider.getStreamingChart({ tmdb });
+    assert.deepEqual(
+      results.map(({ id, mediaType, mdblistRank }) => ({
+        id,
+        mediaType,
+        mdblistRank,
+      })),
+      [
+        { id: 10, mediaType: 'tv', mdblistRank: 1 },
+        { id: 20, mediaType: 'tv', mdblistRank: 2 },
       ]
     );
   });

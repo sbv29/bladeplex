@@ -18,6 +18,17 @@ export const MdblistMovieItemSchema = z.object({
   release_year: z.number().int().nullable().optional(),
 });
 
+export const MdblistShowItemSchema = z.object({
+  id: z.number().int().optional(),
+  rank: z.number().int().positive(),
+  adult: z.number().int().optional().default(0),
+  title: z.string().optional(),
+  imdb_id: z.string().nullable().optional(),
+  ids: MdblistIdsSchema,
+  mediatype: z.union([z.literal('show'), z.literal('tv')]).optional(),
+  release_year: z.number().int().nullable().optional(),
+});
+
 export const MdblistListItemsResponseSchema = z.object({
   movies: z.array(MdblistMovieItemSchema),
   pagination: z
@@ -27,6 +38,11 @@ export const MdblistListItemsResponseSchema = z.object({
       next_cursor: z.string().nullable().optional(),
     })
     .optional(),
+});
+
+export const MdblistShowListItemsResponseSchema = z.object({
+  shows: z.array(MdblistShowItemSchema),
+  pagination: MdblistListItemsResponseSchema.shape.pagination,
 });
 
 const MdblistListMetadataObjectSchema = z.object({
@@ -64,6 +80,7 @@ export type MdblistListReference =
     };
 
 export type MdblistMovieItem = z.infer<typeof MdblistMovieItemSchema>;
+export type MdblistShowItem = z.infer<typeof MdblistShowItemSchema>;
 export type MdblistListItemsResponse = z.infer<
   typeof MdblistListItemsResponseSchema
 >;

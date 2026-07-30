@@ -2,6 +2,7 @@ import MdblistAPI from '@server/api/mdblist';
 import type {
   MdblistListReference,
   MdblistMovieItem,
+  MdblistShowItem,
 } from '@server/api/mdblist/interfaces';
 import type TheMovieDb from '@server/api/themoviedb';
 import { MediaType } from '@server/constants/media';
@@ -11,8 +12,13 @@ import cacheManager from '@server/lib/cache';
 import { getMdblistReferenceKey } from '@server/lib/mdblistListUrl';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
-import type { MovieResult } from '@server/models/Search';
-import { mapMovieDetailsToResult, mapMovieResult } from '@server/models/Search';
+import type { MovieResult, TvResult } from '@server/models/Search';
+import {
+  mapMovieDetailsToResult,
+  mapMovieResult,
+  mapTvDetailsToResult,
+  mapTvResult,
+} from '@server/models/Search';
 import { createHash } from 'node:crypto';
 
 export const JUSTWATCH_STREAMING_CHART_SLUG =
@@ -31,6 +37,9 @@ const DEFAULT_LIST_REFERENCE: MdblistListReference = {
 export interface RankedMovieResult extends MovieResult {
   mdblistRank: number;
 }
+export interface RankedTvResult extends TvResult {
+  mdblistRank: number;
+}
 
 export interface RankedMoviePage {
   page: number;
@@ -39,14 +48,17 @@ export interface RankedMoviePage {
   results: RankedMovieResult[];
 }
 
+type MdblistMediaItem = MdblistMovieItem | MdblistShowItem;
+type RankedMediaResult = RankedMovieResult | RankedTvResult;
+
 interface RankedMovieIdentifier {
-  item: MdblistMovieItem;
+  item: MdblistMediaItem;
   tmdbId: number;
 }
 
 interface PreparedRankedMovie {
-  item: MdblistMovieItem;
-  movie: MovieResult;
+  item: MdblistMediaItem;
+  movie: MovieResult | TvResult;
 }
 
 interface MdblistSourceClient {
@@ -54,6 +66,10 @@ interface MdblistSourceClient {
     reference: MdblistListReference;
     limit: number;
   }): Promise<MdblistMovieItem[]>;
+  getShowList?(options: {
+    reference: MdblistListReference;
+    limit: number;
+  }): Promise<MdblistShowItem[]>;
   getOfficialMovieList?(options: {
     slug: string;
     limit: number;
@@ -69,9 +85,10 @@ interface MdblistProviderOptions {
   client?: MdblistSourceClient;
   log?: MdblistLogger;
   list?: MdblistListReference;
+  mediaType?: 'movie' | 'tv';
 }
 
-const sourceRefreshPromises = new Map<string, Promise<MdblistMovieItem[]>>();
+const sourceRefreshPromises = new Map<string, Promise<MdblistMediaItem[]>>();
 const normalizedRefreshPromises = new Map<
   string,
   Promise<RankedMovieIdentifier[]>
@@ -86,6 +103,7 @@ export class MdblistProvider {
   private client?: MdblistSourceClient;
   private log: MdblistLogger;
   private list: MdblistListReference;
+  private mediaType: 'movie' | 'tv';
   private cache = cacheManager.getCache('mdblist').data;
 
   constructor(options: MdblistProviderOptions = {}) {
@@ -93,10 +111,11 @@ export class MdblistProvider {
     this.client = options.client;
     this.log = options.log ?? logger;
     this.list = options.list ?? DEFAULT_LIST_REFERENCE;
+    this.mediaType = options.mediaType ?? 'movie';
   }
 
   private get freshCacheKey(): string {
-    return `${getMdblistReferenceKey(this.list)}:movies`;
+    return `${getMdblistReferenceKey(this.list)}:${this.mediaType}`;
   }
 
   private get staleCacheKey(): string {
@@ -107,12 +126,12 @@ export class MdblistProvider {
     return this.apiKey.trim().length > 0;
   }
 
-  public async getSourceItems(): Promise<MdblistMovieItem[]> {
+  public async getSourceItems(): Promise<MdblistMediaItem[]> {
     if (!this.isConfigured()) {
       return [];
     }
 
-    const cached = this.cache.get<MdblistMovieItem[]>(this.freshCacheKey);
+    const cached = this.cache.get<MdblistMediaItem[]>(this.freshCacheKey);
     if (cached) {
       return cached;
     }
@@ -128,26 +147,32 @@ export class MdblistProvider {
     return refreshPromise;
   }
 
-  private async refreshSourceItems(): Promise<MdblistMovieItem[]> {
+  private async refreshSourceItems(): Promise<MdblistMediaItem[]> {
     try {
       const client = this.client ?? new MdblistAPI(this.apiKey);
-      const items = client.getMovieList
-        ? await client.getMovieList({
-            reference: this.list,
-            limit: MDBLIST_SOURCE_LIMIT,
-          })
-        : this.list.type === 'official' && client.getOfficialMovieList
-          ? await client.getOfficialMovieList({
-              slug: this.list.slug,
+      const items =
+        this.mediaType === 'tv' && client.getShowList
+          ? await client.getShowList({
+              reference: this.list,
               limit: MDBLIST_SOURCE_LIMIT,
             })
-          : [];
+          : client.getMovieList
+            ? await client.getMovieList({
+                reference: this.list,
+                limit: MDBLIST_SOURCE_LIMIT,
+              })
+            : this.list.type === 'official' && client.getOfficialMovieList
+              ? await client.getOfficialMovieList({
+                  slug: this.list.slug,
+                  limit: MDBLIST_SOURCE_LIMIT,
+                })
+              : [];
 
       this.cache.set(this.freshCacheKey, items, MDBLIST_CACHE_TTL_SECONDS);
       this.cache.set(this.staleCacheKey, items, MDBLIST_STALE_TTL_SECONDS);
       return items;
     } catch (error) {
-      const stale = this.cache.get<MdblistMovieItem[]>(this.staleCacheKey);
+      const stale = this.cache.get<MdblistMediaItem[]>(this.staleCacheKey);
       this.cache.set(
         this.freshCacheKey,
         stale ?? [],
@@ -171,7 +196,7 @@ export class MdblistProvider {
     tmdb: TheMovieDb;
     user?: User;
     language?: string;
-  }): Promise<RankedMovieResult[]> {
+  }): Promise<RankedMediaResult[]> {
     const rankedItems = await this.getPreparedRankedMovies({
       tmdb,
       language,
@@ -195,7 +220,9 @@ export class MdblistProvider {
     language?: string;
     page?: number;
     pageSize?: number;
-  }): Promise<RankedMoviePage> {
+  }): Promise<
+    Omit<RankedMoviePage, 'results'> & { results: RankedMediaResult[] }
+  > {
     const normalizedPage = Math.max(1, Math.floor(page));
     const normalizedPageSize = Math.max(1, Math.floor(pageSize));
     const rankedItems = await this.getPreparedRankedMovies({
@@ -266,7 +293,7 @@ export class MdblistProvider {
     tmdb,
     language,
   }: {
-    sourceItems: MdblistMovieItem[];
+    sourceItems: MdblistMediaItem[];
     tmdb: TheMovieDb;
     language?: string;
   }): Promise<RankedMovieIdentifier[]> {
@@ -362,12 +389,16 @@ export class MdblistProvider {
     const hydrated = await Promise.all(
       rankedItems.map(async ({ item, tmdbId }) => {
         try {
+          if (this.mediaType === 'tv') {
+            const show = await tmdb.getTvShow({ tvId: tmdbId, language });
+            return { item, movie: mapTvResult(mapTvDetailsToResult(show)) };
+          }
           const movie = await tmdb.getMovie({ movieId: tmdbId, language });
           return movie.adult
             ? undefined
             : { item, movie: mapMovieResult(mapMovieDetailsToResult(movie)) };
         } catch (error) {
-          this.log.warn('MDBList movie could not be hydrated', {
+          this.log.warn('MDBList item could not be hydrated', {
             label: 'MDBList',
             list: getMdblistReferenceKey(this.list),
             rank: item.rank,
@@ -391,12 +422,12 @@ export class MdblistProvider {
   }: {
     rankedItems: PreparedRankedMovie[];
     user?: User;
-  }): Promise<RankedMovieResult[]> {
+  }): Promise<RankedMediaResult[]> {
     const relatedMedia = await Media.getRelatedMedia(
       user,
       rankedItems.map(({ movie }) => ({
         tmdbId: movie.id,
-        mediaType: MediaType.MOVIE,
+        mediaType: this.mediaType === 'movie' ? MediaType.MOVIE : MediaType.TV,
       }))
     );
 
@@ -404,14 +435,16 @@ export class MdblistProvider {
       ...movie,
       mediaInfo: relatedMedia.find(
         (media) =>
-          media.tmdbId === movie.id && media.mediaType === MediaType.MOVIE
+          media.tmdbId === movie.id &&
+          media.mediaType ===
+            (this.mediaType === 'movie' ? MediaType.MOVIE : MediaType.TV)
       ),
       mdblistRank: item.rank,
     }));
   }
 
   private async resolveTmdbId(
-    item: MdblistMovieItem,
+    item: MdblistMediaItem,
     tmdb: TheMovieDb,
     language?: string
   ): Promise<number | undefined> {
@@ -420,8 +453,9 @@ export class MdblistProvider {
     }
 
     const imdbId = item.ids.imdb ?? item.imdb_id;
-    if (!imdbId) {
-      this.log.warn('MDBList movie has no supported external identifier', {
+    const tvdbId = this.mediaType === 'tv' ? item.ids.tvdb : undefined;
+    if (!imdbId && !tvdbId) {
+      this.log.warn('MDBList item has no supported external identifier', {
         label: 'MDBList',
         rank: item.rank,
       });
@@ -430,20 +464,27 @@ export class MdblistProvider {
 
     try {
       const response = await tmdb.getByExternalId({
-        externalId: imdbId,
-        type: 'imdb',
+        ...(imdbId
+          ? { externalId: imdbId, type: 'imdb' as const }
+          : { externalId: tvdbId as number, type: 'tvdb' as const }),
         language,
       });
-      const tmdbId = response.movie_results[0]?.id;
+      const tmdbId =
+        this.mediaType === 'tv'
+          ? response.tv_results[0]?.id
+          : response.movie_results[0]?.id;
       if (!tmdbId) {
-        this.log.warn('MDBList IMDb identifier returned no movie', {
-          label: 'MDBList',
-          rank: item.rank,
-        });
+        this.log.warn(
+          'MDBList external identifier returned no matching media',
+          {
+            label: 'MDBList',
+            rank: item.rank,
+          }
+        );
       }
       return tmdbId;
     } catch (error) {
-      this.log.warn('MDBList IMDb identifier could not be resolved', {
+      this.log.warn('MDBList external identifier could not be resolved', {
         label: 'MDBList',
         rank: item.rank,
         errorType:

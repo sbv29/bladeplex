@@ -20,6 +20,7 @@ describe('parseMdblistListUrl', () => {
           type: 'official',
           slug: 'justwatch-streaming-charts',
         },
+        mediaType: 'movie',
       }
     );
 
@@ -35,6 +36,21 @@ describe('parseMdblistListUrl', () => {
           type: 'official',
           slug: 'justwatch-streaming-charts',
         },
+        mediaType: 'movie',
+      }
+    );
+  });
+
+  it('normalizes official show list URLs', () => {
+    assert.deepEqual(
+      parseMdblistListUrl(
+        'https://mdblist.com/lists/official/shows/moviemeter'
+      ),
+      {
+        canonicalUrl: 'https://mdblist.com/lists/official/shows/moviemeter',
+        listType: 'official',
+        reference: { type: 'official', slug: 'moviemeter' },
+        mediaType: 'tv',
       }
     );
   });
@@ -60,7 +76,7 @@ describe('parseMdblistListUrl', () => {
       'http://mdblist.com/lists/scott/movies',
       'https://user:pass@mdblist.com/lists/scott/movies',
       'https://mdblist.com/movie/example',
-      'https://mdblist.com/lists/official/shows/example',
+      'https://mdblist.com/lists/official/people/example',
     ];
 
     for (const url of invalidUrls) {

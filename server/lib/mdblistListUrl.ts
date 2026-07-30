@@ -7,6 +7,7 @@ export interface ParsedMdblistListUrl {
   canonicalUrl: string;
   listType: MdblistListType;
   reference: MdblistListReference;
+  mediaType?: 'movie' | 'tv';
 }
 
 export class MdblistListValidationError extends Error {}
@@ -60,17 +61,20 @@ export const parseMdblistListUrl = (input: string): ParsedMdblistListUrl => {
     const hasMediaSegment = segments.length === 4;
     if (
       (segments.length !== 3 && !hasMediaSegment) ||
-      (hasMediaSegment && segments[2] !== 'movies')
+      (hasMediaSegment && !['movies', 'shows'].includes(segments[2]))
     ) {
       throw new MdblistListValidationError(
-        'Phase 1 supports official MDBList movie lists only.'
+        'Official MDBList URLs must contain /movies/ or /shows/.'
       );
     }
     const slug = decodeSegment(segments[hasMediaSegment ? 3 : 2]);
     return {
-      canonicalUrl: `https://mdblist.com/lists/official/movies/${slug}`,
+      canonicalUrl: `https://mdblist.com/lists/official/${
+        hasMediaSegment ? segments[2] : 'movies'
+      }/${slug}`,
       listType: 'official',
       reference: { type: 'official', slug },
+      mediaType: hasMediaSegment && segments[2] === 'shows' ? 'tv' : 'movie',
     };
   }
 

@@ -1,6 +1,7 @@
 import MdblistAPI from '@server/api/mdblist';
 import { DiscoverSliderType } from '@server/constants/discover';
 import dataSource, { getRepository } from '@server/datasource';
+import type { CustomListMediaType } from '@server/entity/CustomList';
 import CustomList from '@server/entity/CustomList';
 import DiscoverSlider from '@server/entity/DiscoverSlider';
 import {
@@ -44,10 +45,17 @@ const validateList = async (input: z.infer<typeof listInputSchema>) => {
   const fallbackTitle = titleFromSlug(parsedUrl.reference.slug);
 
   if (parsedUrl.reference.type === 'official') {
-    const items = await client.getMovieList({
-      reference: parsedUrl.reference,
-      limit: 1000,
-    });
+    const mediaType: CustomListMediaType = parsedUrl.mediaType ?? 'movie';
+    const items =
+      mediaType === 'tv'
+        ? await client.getShowList({
+            reference: parsedUrl.reference,
+            limit: 1000,
+          })
+        : await client.getMovieList({
+            reference: parsedUrl.reference,
+            limit: 1000,
+          });
     const providerTitle =
       parsedUrl.reference.slug === 'justwatch-streaming-charts'
         ? 'United States Daily Streaming Charts: Movies'
@@ -57,6 +65,7 @@ const validateList = async (input: z.infer<typeof listInputSchema>) => {
       canonicalUrl: parsedUrl.canonicalUrl,
       listType: parsedUrl.listType,
       reference: parsedUrl.reference,
+      mediaType,
       title: input.title ?? providerTitle,
       providerTitle,
       itemCount: items.length,
@@ -78,21 +87,28 @@ const validateList = async (input: z.infer<typeof listInputSchema>) => {
   }
 
   const mediaType = metadata.mediatype?.toLowerCase();
-  if (mediaType && !['movie', 'movies'].includes(mediaType)) {
+  if (
+    mediaType &&
+    !['movie', 'movies', 'show', 'shows', 'tv'].includes(mediaType)
+  ) {
     throw new MdblistListValidationError(
-      'Phase 1 supports MDBList movie lists only.'
+      'Only MDBList movie and show lists are supported.'
     );
   }
 
-  const previewItems = await client.getMovieList({
-    reference: parsedUrl.reference,
-    limit: 5,
-  });
+  const normalizedMediaType: CustomListMediaType =
+    mediaType && ['show', 'shows', 'tv'].includes(mediaType) ? 'tv' : 'movie';
+
+  const previewItems =
+    normalizedMediaType === 'tv'
+      ? await client.getShowList({ reference: parsedUrl.reference, limit: 5 })
+      : await client.getMovieList({ reference: parsedUrl.reference, limit: 5 });
 
   return {
     canonicalUrl: parsedUrl.canonicalUrl,
     listType: parsedUrl.listType,
     reference: parsedUrl.reference,
+    mediaType: normalizedMediaType,
     title: input.title ?? metadata.name ?? fallbackTitle,
     providerTitle: metadata.name ?? fallbackTitle,
     itemCount: metadata.items ?? previewItems.length,
@@ -109,10 +125,16 @@ const serializeLists = async (lists: CustomList[]) => {
   const sliderRepository = getRepository(DiscoverSlider);
   const sliders = lists.length
     ? await sliderRepository.find({
-        where: {
-          type: DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
-          data: In(lists.map((list) => String(list.id))),
-        },
+        where: [
+          {
+            type: DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
+            data: In(lists.map((list) => String(list.id))),
+          },
+          {
+            type: DiscoverSliderType.MDBLIST_CUSTOM_TV,
+            data: In(lists.map((list) => String(list.id))),
+          },
+        ],
       })
     : [];
 
@@ -181,7 +203,7 @@ customListRoutes.post('/', async (req, res, next) => {
         listType: validated.listType,
         username,
         slug: validated.reference.slug,
-        mediaType: 'movie',
+        mediaType: validated.mediaType,
       },
     });
     if (existing) {
@@ -202,7 +224,7 @@ customListRoutes.post('/', async (req, res, next) => {
           sourceUrl: validated.canonicalUrl,
           username,
           slug: validated.reference.slug,
-          mediaType: 'movie',
+          mediaType: validated.mediaType,
           itemCount: validated.itemCount,
         })
       );
@@ -212,7 +234,10 @@ customListRoutes.post('/', async (req, res, next) => {
         .getRawOne<{ max: number | null }>();
       await sliderRepository.save(
         new DiscoverSlider({
-          type: DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
+          type:
+            validated.mediaType === 'tv'
+              ? DiscoverSliderType.MDBLIST_CUSTOM_TV
+              : DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
           title: list.title,
           data: String(list.id),
           enabled: true,
@@ -257,7 +282,10 @@ customListRoutes.put('/:listId', async (req, res, next) => {
       existing.title = parsed.data.title;
       await sliderRepository.update(
         {
-          type: DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
+          type:
+            existing.mediaType === 'tv'
+              ? DiscoverSliderType.MDBLIST_CUSTOM_TV
+              : DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
           data: String(listId),
         },
         { title: parsed.data.title }
@@ -280,7 +308,10 @@ customListRoutes.delete('/:listId', async (req, res, next) => {
         where: { id: listId },
       });
       await sliderRepository.delete({
-        type: DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
+        type:
+          list.mediaType === 'tv'
+            ? DiscoverSliderType.MDBLIST_CUSTOM_TV
+            : DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
         data: String(listId),
       });
       await listRepository.remove(list);

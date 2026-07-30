@@ -31,6 +31,14 @@ const sourceMovie = (rank: number, tmdbId: number) => ({
   ids: { tmdb: tmdbId, mdblist: `movie-${tmdbId}` },
   mediatype: 'movie' as const,
 });
+const sourceShow = (rank: number, tmdbId: number) => ({
+  rank,
+  adult: 0,
+  title: `Show ${tmdbId}`,
+  release_year: 2026,
+  ids: { tmdb: tmdbId, mdblist: `show-${tmdbId}` },
+  mediatype: 'show' as const,
+});
 
 const createApp = () => {
   const testApp = express();
@@ -89,6 +97,10 @@ beforeEach(() => {
   mock.method(MdblistAPI.prototype, 'getMovieList', async () => [
     sourceMovie(1, 100),
     sourceMovie(2, 200),
+  ]);
+  mock.method(MdblistAPI.prototype, 'getShowList', async () => [
+    sourceShow(1, 300),
+    sourceShow(2, 400),
   ]);
 });
 
@@ -173,7 +185,26 @@ describe('custom MDBList settings', () => {
     assert.equal(slider.enabled, true);
   });
 
-  it('rejects duplicate lists and unsupported list media types', async () => {
+  it('creates an official show list and TV Discover slider', async () => {
+    const owner = await loginAs('admin@seerr.dev');
+    const response = await owner.post('/settings/custom-lists').send({
+      url: 'https://mdblist.com/lists/official/shows/moviemeter',
+    });
+
+    assert.equal(response.status, 201);
+    assert.equal(response.body.mediaType, 'tv');
+    assert.equal(
+      response.body.sourceUrl,
+      'https://mdblist.com/lists/official/shows/moviemeter'
+    );
+    const slider = await getRepository(DiscoverSlider).findOneByOrFail({
+      type: DiscoverSliderType.MDBLIST_CUSTOM_TV,
+      data: String(response.body.id),
+    });
+    assert.equal(slider.enabled, true);
+  });
+
+  it('rejects duplicate lists', async () => {
     const owner = await loginAs('admin@seerr.dev');
     const body = {
       url: 'https://mdblist.com/lists/scott/weekend-movies',
@@ -186,29 +217,6 @@ describe('custom MDBList settings', () => {
       (await owner.post('/settings/custom-lists').send(body)).status,
       409
     );
-
-    mock.restoreAll();
-    mock.method(MdblistAPI.prototype, 'getListMetadata', async () => ({
-      name: 'TV Only',
-      slug: 'tv-only',
-      private: false,
-      mediatype: 'show',
-      items: 20,
-    }));
-    const getMovieList = mock.method(
-      MdblistAPI.prototype,
-      'getMovieList',
-      async () => []
-    );
-    const unsupported = await owner
-      .post('/settings/custom-lists/validate')
-      .send({ url: 'https://mdblist.com/lists/scott/tv-only' });
-    assert.equal(unsupported.status, 400);
-    assert.equal(
-      unsupported.body.message,
-      'Phase 1 supports MDBList movie lists only.'
-    );
-    assert.equal(getMovieList.mock.callCount(), 0);
   });
 
   it('rejects non-MDBList hosts before making an upstream request', async () => {

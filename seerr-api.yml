@@ -2187,7 +2187,7 @@ components:
           type: string
         mediaType:
           type: string
-          enum: [movie]
+          enum: [movie, tv]
         itemCount:
           type: integer
         discoverSlider:
@@ -4032,7 +4032,7 @@ paths:
   /settings/custom-lists:
     get:
       summary: Get custom discovery lists
-      description: Returns administrator-managed MDBList movie lists. Requires the `ADMIN` permission.
+      description: Returns administrator-managed MDBList movie and TV lists. Requires the `ADMIN` permission.
       tags:
         - settings
       responses:
@@ -4050,7 +4050,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/CustomList'
     post:
-      summary: Add an MDBList movie list to Discover
+      summary: Add an MDBList movie or TV list to Discover
       description: Validates a fixed MDBList list reference and creates its managed Discover slider. Requires the `ADMIN` permission.
       tags:
         - settings
@@ -4069,7 +4069,7 @@ paths:
                 $ref: '#/components/schemas/CustomList'
   /settings/custom-lists/validate:
     post:
-      summary: Validate and preview an MDBList movie list
+      summary: Validate and preview an MDBList movie or TV list
       description: Resolves list metadata and a small preview without persisting it. Requires the `ADMIN` permission.
       tags:
         - settings
@@ -5868,6 +5868,51 @@ paths:
                     items:
                       allOf:
                         - $ref: '#/components/schemas/MovieResult'
+                        - type: object
+                          properties:
+                            mdblistRank:
+                              type: integer
+                              minimum: 1
+        '404':
+          description: Custom list not found
+  /discover/mdblist/lists/{listId}/tv:
+    get:
+      summary: Get a configured MDBList custom TV list
+      description: Returns a locally paginated native TV result page from the administrator-approved list. MDBList is accessed only by the server.
+      tags:
+        - search
+      parameters:
+        - in: path
+          name: listId
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: page
+          schema:
+            type: number
+            default: 1
+      responses:
+        '200':
+          description: Native TV results in MDBList rank order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: number
+                  totalPages:
+                    type: number
+                  totalResults:
+                    type: number
+                  title:
+                    type: string
+                  results:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/TvResult'
                         - type: object
                           properties:
                             mdblistRank:

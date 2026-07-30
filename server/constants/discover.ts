@@ -25,6 +25,7 @@ export enum DiscoverSliderType {
   NEW_RELEASES,
   MDBLIST_JUSTWATCH_STREAMING_CHART_MOVIES,
   MDBLIST_CUSTOM_MOVIES,
+  MDBLIST_CUSTOM_TV,
 }
 
 export const defaultSliders: Partial<DiscoverSlider>[] = [

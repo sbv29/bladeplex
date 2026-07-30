@@ -2,9 +2,11 @@ import ExternalAPI from '@server/api/externalapi';
 import {
   MdblistListItemsResponseSchema,
   MdblistListMetadataSchema,
+  MdblistShowListItemsResponseSchema,
   type MdblistListMetadata,
   type MdblistListReference,
   type MdblistMovieItem,
+  type MdblistShowItem,
 } from '@server/api/mdblist/interfaces';
 
 const MDBLIST_API_URL = 'https://api.mdblist.com';
@@ -73,6 +75,23 @@ class MdblistAPI extends ExternalAPI {
       reference: { type: 'official', slug },
       limit,
     });
+  }
+
+  public async getShowList({
+    reference,
+    limit = 1000,
+  }: {
+    reference: MdblistListReference;
+    limit?: number;
+  }): Promise<MdblistShowItem[]> {
+    const response = await this.get<unknown>(
+      `${this.getListPath(reference)}/items`,
+      {
+        params: { mediatype: 'show', limit, sort: 'rank', order: 'asc' },
+      }
+    );
+
+    return MdblistShowListItemsResponseSchema.parse(response).shows;
   }
 }
 

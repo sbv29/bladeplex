@@ -282,6 +282,20 @@ const Discover = () => {
               />
             ) : null;
             break;
+          case DiscoverSliderType.MDBLIST_CUSTOM_TV:
+            sliderComponent = slider.data ? (
+              <MediaSlider
+                sliderKey={`mdblist-custom-tv-${slider.data}`}
+                title={
+                  slider.title ??
+                  intl.formatMessage(sliderTitles.mdblistCustomTv)
+                }
+                url={`/api/v1/discover/mdblist/lists/${slider.data}/tv`}
+                linkUrl={`/discover/tv/mdblist/${slider.data}`}
+                hideWhenEmpty
+              />
+            ) : null;
+            break;
           case DiscoverSliderType.MOVIE_GENRES:
             sliderComponent = <MovieGenreSlider />;
             break;
