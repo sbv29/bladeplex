@@ -53,6 +53,22 @@ describe('parseMdblistListUrl', () => {
         mediaType: 'tv',
       }
     );
+
+    assert.deepEqual(
+      parseMdblistListUrl(
+        'https://mdblist.com/lists/official/shows/streaming-charts'
+      ),
+      {
+        canonicalUrl:
+          'https://mdblist.com/lists/official/shows/streaming-charts',
+        listType: 'official',
+        reference: {
+          type: 'official',
+          slug: 'justwatch-streaming-charts',
+        },
+        mediaType: 'tv',
+      }
+    );
   });
 
   it('normalizes public user list URLs', () => {

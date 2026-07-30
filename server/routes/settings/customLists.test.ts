@@ -204,6 +204,24 @@ describe('custom MDBList settings', () => {
     assert.equal(slider.enabled, true);
   });
 
+  it('resolves the official streaming-charts show URL to its API alias', async () => {
+    const owner = await loginAs('admin@seerr.dev');
+    const response = await owner.post('/settings/custom-lists/validate').send({
+      url: 'https://mdblist.com/lists/official/shows/streaming-charts',
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.mediaType, 'tv');
+    assert.equal(
+      response.body.canonicalUrl,
+      'https://mdblist.com/lists/official/shows/streaming-charts'
+    );
+    assert.equal(
+      response.body.title,
+      'United States Daily Streaming Charts: Series'
+    );
+  });
+
   it('rejects duplicate lists', async () => {
     const owner = await loginAs('admin@seerr.dev');
     const body = {

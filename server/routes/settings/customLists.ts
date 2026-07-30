@@ -58,7 +58,9 @@ const validateList = async (input: z.infer<typeof listInputSchema>) => {
           });
     const providerTitle =
       parsedUrl.reference.slug === 'justwatch-streaming-charts'
-        ? 'United States Daily Streaming Charts: Movies'
+        ? `United States Daily Streaming Charts: ${
+            mediaType === 'tv' ? 'Series' : 'Movies'
+          }`
         : fallbackTitle;
 
     return {

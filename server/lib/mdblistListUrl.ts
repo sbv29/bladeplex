@@ -13,6 +13,9 @@ export interface ParsedMdblistListUrl {
 export class MdblistListValidationError extends Error {}
 
 const SAFE_SEGMENT = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
+const OFFICIAL_API_SLUG_ALIASES: Record<string, string> = {
+  'shows:streaming-charts': 'justwatch-streaming-charts',
+};
 
 const decodeSegment = (segment: string): string => {
   const decoded = decodeURIComponent(segment);
@@ -68,13 +71,14 @@ export const parseMdblistListUrl = (input: string): ParsedMdblistListUrl => {
       );
     }
     const slug = decodeSegment(segments[hasMediaSegment ? 3 : 2]);
+    const mediaSegment = hasMediaSegment ? segments[2] : 'movies';
+    const apiSlug =
+      OFFICIAL_API_SLUG_ALIASES[`${mediaSegment}:${slug}`] ?? slug;
     return {
-      canonicalUrl: `https://mdblist.com/lists/official/${
-        hasMediaSegment ? segments[2] : 'movies'
-      }/${slug}`,
+      canonicalUrl: `https://mdblist.com/lists/official/${mediaSegment}/${slug}`,
       listType: 'official',
-      reference: { type: 'official', slug },
-      mediaType: hasMediaSegment && segments[2] === 'shows' ? 'tv' : 'movie',
+      reference: { type: 'official', slug: apiSlug },
+      mediaType: mediaSegment === 'shows' ? 'tv' : 'movie',
     };
   }
 
