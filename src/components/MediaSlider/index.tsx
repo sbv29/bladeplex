@@ -98,7 +98,10 @@ const MediaSlider = ({
     }
   }, [titles, setSize, size, data, onNewTitles]);
 
-  if (hideWhenEmpty && (data?.[0].results ?? []).length === 0) {
+  if (
+    hideWhenEmpty &&
+    (error || (data && (data[0]?.results ?? []).length === 0))
+  ) {
     return null;
   }
 

@@ -31,6 +31,10 @@ const messages = defineMessages('components.Settings.SettingsMain', {
   generalsettingsDescription:
     'Configure global and default settings for Seerr.',
   apikey: 'API Key',
+  mdblist: 'MDBList',
+  mdblistApiKey: 'MDBList API Key',
+  mdblistApiKeyDescription:
+    'Used server-side to load approved MDBList discovery sections. Existing keys remain unchanged when this masked field is saved.',
   apikeyCopied: 'Copied API key to clipboard.',
   applicationTitle: 'Application Title',
   applicationurl: 'Application URL',
@@ -201,6 +205,7 @@ const SettingsMain = () => {
         <Formik
           initialValues={{
             applicationTitle: data?.applicationTitle,
+            mdblistApiKey: data?.mdblistApiKey ?? '',
             applicationUrl: data?.applicationUrl,
             hideAvailable: data?.hideAvailable,
             hideBlocklisted: data?.hideBlocklisted,
@@ -249,6 +254,7 @@ const SettingsMain = () => {
                 versionCheck: values?.versionCheck,
                 ...(currentUser?.id === 1
                   ? {
+                      mdblistApiKey: values.mdblistApiKey,
                       mobileAnnouncementEnabled:
                         values.mobileAnnouncementEnabled,
                       mobileAnnouncementMessage:
@@ -679,6 +685,34 @@ const SettingsMain = () => {
                     />
                   </div>
                 </div>
+                {currentUser?.id === 1 && (
+                  <div className="mt-8 border-t border-gray-700 pt-6">
+                    <div className="mb-4">
+                      <h4 className="text-lg font-semibold text-gray-100">
+                        {intl.formatMessage(messages.mdblist)}
+                      </h4>
+                      <p className="mt-1 text-sm text-gray-400">
+                        {intl.formatMessage(messages.mdblistApiKeyDescription)}
+                      </p>
+                    </div>
+                    <div className="form-row">
+                      <label htmlFor="mdblistApiKey" className="text-label">
+                        {intl.formatMessage(messages.mdblistApiKey)}
+                      </label>
+                      <div className="form-input-area">
+                        <div className="form-input-field">
+                          <SensitiveInput
+                            as="field"
+                            type="text"
+                            id="mdblistApiKey"
+                            name="mdblistApiKey"
+                            maxLength={200}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {currentUser?.id === 1 && (
                   <div className="mt-8 border-t border-gray-700 pt-6">
                     <div className="mb-4">

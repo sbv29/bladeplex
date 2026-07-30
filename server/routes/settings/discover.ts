@@ -1,5 +1,6 @@
 import { getRepository } from '@server/datasource';
 import DiscoverSlider from '@server/entity/DiscoverSlider';
+import { bootstrapCustomListSliders } from '@server/lib/customLists';
 import logger from '@server/logger';
 import { Router } from 'express';
 
@@ -73,6 +74,7 @@ discoverSettingRoutes.get('/reset', async (_req, res) => {
 
   await sliderRepository.clear();
   await DiscoverSlider.bootstrapSliders();
+  await bootstrapCustomListSliders();
 
   return res.status(204).send();
 });

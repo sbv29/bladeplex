@@ -139,6 +139,14 @@ const DiscoverSliderEdit = ({
         return intl.formatMessage(sliderTitles.popularmovies);
       case DiscoverSliderType.NEW_RELEASES:
         return intl.formatMessage(sliderTitles.newreleases);
+      case DiscoverSliderType.MDBLIST_JUSTWATCH_STREAMING_CHART_MOVIES:
+        return intl.formatMessage(
+          sliderTitles.mdblistJustwatchStreamingChartMovies
+        );
+      case DiscoverSliderType.MDBLIST_CUSTOM_MOVIES:
+        return (
+          slider.title ?? intl.formatMessage(sliderTitles.mdblistCustomMovies)
+        );
       case DiscoverSliderType.MOVIE_GENRES:
         return intl.formatMessage(sliderTitles.moviegenres);
       case DiscoverSliderType.UPCOMING_MOVIES:

@@ -131,6 +131,7 @@ export interface ProxySettings {
 
 export interface MainSettings {
   apiKey: string;
+  mdblistApiKey: string;
   applicationTitle: string;
   applicationUrl: string;
   cacheImages: boolean;
@@ -434,6 +435,7 @@ class Settings {
       vapidPublic: '',
       main: {
         apiKey: '',
+        mdblistApiKey: '',
         applicationTitle: 'Seerr',
         applicationUrl: '',
         cacheImages: false,

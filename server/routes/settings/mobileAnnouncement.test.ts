@@ -7,7 +7,7 @@ import { Permission } from '@server/lib/permissions';
 import Settings, { getSettings } from '@server/lib/settings';
 import { checkUser, isAuthenticated } from '@server/middleware/auth';
 import authRoutes from '@server/routes/auth';
-import settingsRoutes from '@server/routes/settings';
+import settingsRoutes, { MDBLIST_API_KEY_MASK } from '@server/routes/settings';
 import { setupTestDb } from '@server/test/db';
 import type { Express } from 'express';
 import express from 'express';
@@ -24,6 +24,7 @@ const originalAnnouncement = {
   mobileAnnouncementDurationDays: settings.main.mobileAnnouncementDurationDays,
   mobileAnnouncementExpiresAt: settings.main.mobileAnnouncementExpiresAt,
 };
+const originalMdblistApiKey = settings.main.mdblistApiKey;
 
 mock.method(settings, 'save', async () => undefined);
 
@@ -63,6 +64,68 @@ before(() => {
 
 afterEach(() => {
   Object.assign(settings.main, originalAnnouncement);
+  settings.main.mdblistApiKey = originalMdblistApiKey;
+});
+
+describe('MDBList API key settings', () => {
+  it('defaults to unconfigured', () => {
+    assert.equal(new Settings().main.mdblistApiKey, '');
+  });
+
+  it('stores owner updates but returns only a mask', async () => {
+    const owner = await loginAs('admin@seerr.dev');
+    const response = await owner.post('/settings/main').send({
+      mdblistApiKey: '  owner-secret  ',
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(settings.main.mdblistApiKey, 'owner-secret');
+    assert.equal(response.body.mdblistApiKey, MDBLIST_API_KEY_MASK);
+    assert.equal(JSON.stringify(response.body).includes('owner-secret'), false);
+
+    const readResponse = await owner.get('/settings/main');
+    assert.equal(readResponse.body.mdblistApiKey, MDBLIST_API_KEY_MASK);
+  });
+
+  it('preserves the stored key when a mask or blank value is saved', async () => {
+    settings.main.mdblistApiKey = 'existing-secret';
+    const owner = await loginAs('admin@seerr.dev');
+
+    assert.equal(
+      (await owner.post('/settings/main').send({ mdblistApiKey: '' })).status,
+      200
+    );
+    assert.equal(settings.main.mdblistApiKey, 'existing-secret');
+    assert.equal(
+      (
+        await owner
+          .post('/settings/main')
+          .send({ mdblistApiKey: MDBLIST_API_KEY_MASK })
+      ).status,
+      200
+    );
+    assert.equal(settings.main.mdblistApiKey, 'existing-secret');
+  });
+
+  it('prevents a non-owner administrator from reading or updating the key', async () => {
+    settings.main.mdblistApiKey = 'owner-secret';
+    const userRepository = getRepository(User);
+    const friend = await userRepository.findOneOrFail({
+      where: { email: 'friend@seerr.dev' },
+    });
+    friend.permissions = Permission.ADMIN;
+    await userRepository.save(friend);
+
+    const nonOwner = await loginAs('friend@seerr.dev');
+    const readResponse = await nonOwner.get('/settings/main');
+    assert.equal(readResponse.body.mdblistApiKey, undefined);
+
+    const updateResponse = await nonOwner
+      .post('/settings/main')
+      .send({ mdblistApiKey: 'replacement' });
+    assert.equal(updateResponse.status, 403);
+    assert.equal(settings.main.mdblistApiKey, 'owner-secret');
+  });
 });
 
 const loginAs = async (email: string) => {

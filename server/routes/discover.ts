@@ -4,6 +4,7 @@ import TheMovieDb from '@server/api/themoviedb';
 import type { TmdbKeyword } from '@server/api/themoviedb/interfaces';
 import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
+import CustomList from '@server/entity/CustomList';
 import Media from '@server/entity/Media';
 import { User } from '@server/entity/User';
 import { Watchlist } from '@server/entity/Watchlist';
@@ -11,6 +12,8 @@ import type {
   GenreSliderItem,
   WatchlistResponse,
 } from '@server/interfaces/api/discoverInterfaces';
+import { MdblistProvider } from '@server/lib/mdblist';
+import { createMdblistListReference } from '@server/lib/mdblistListUrl';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { mapProductionCompany } from '@server/models/Movie';
@@ -96,6 +99,79 @@ export type FilterOptions = z.infer<typeof QueryFilterOptions>;
 const ApiQuerySchema = QueryFilterOptions.omit({
   certificationMode: true,
 });
+
+discoverRoutes.get('/mdblist/lists/:listId/movies', async (req, res) => {
+  const listId = Number(req.params.listId);
+  const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+  if (!Number.isSafeInteger(listId) || listId <= 0) {
+    return res.status(404).json({ message: 'Custom list not found.' });
+  }
+
+  const list = await getRepository(CustomList).findOne({
+    where: { id: listId, provider: 'mdblist', mediaType: 'movie' },
+  });
+  if (!list) {
+    return res.status(404).json({ message: 'Custom list not found.' });
+  }
+
+  try {
+    const provider = new MdblistProvider({
+      list: createMdblistListReference(list),
+    });
+    const resultPage = await provider.getStreamingChartPage({
+      tmdb: createTmdbWithRegionLanguage(req.user),
+      user: req.user,
+      language: req.locale,
+      page,
+    });
+    return res.status(200).json({ ...resultPage, title: list.title });
+  } catch (error) {
+    logger.warn('Unable to prepare an MDBList custom movie list', {
+      label: 'MDBList',
+      listId,
+      errorType:
+        error instanceof Error ? error.constructor.name : 'UnknownError',
+    });
+    return res.status(200).json({
+      page: 1,
+      totalPages: 1,
+      totalResults: 0,
+      results: [],
+      title: list.title,
+    });
+  }
+});
+
+discoverRoutes.get(
+  '/mdblist/justwatch-streaming-charts/movies',
+  async (req, res) => {
+    const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+
+    try {
+      const provider = new MdblistProvider();
+      const resultPage = await provider.getStreamingChartPage({
+        tmdb: createTmdbWithRegionLanguage(req.user),
+        user: req.user,
+        language: req.locale,
+        page,
+      });
+
+      return res.status(200).json(resultPage);
+    } catch (error) {
+      logger.warn('Unable to prepare the MDBList streaming chart', {
+        label: 'MDBList',
+        errorType:
+          error instanceof Error ? error.constructor.name : 'UnknownError',
+      });
+      return res.status(200).json({
+        page: 1,
+        totalPages: 1,
+        totalResults: 0,
+        results: [],
+      });
+    }
+  }
+);
 
 discoverRoutes.get('/movies', async (req, res, next) => {
   const tmdb = createTmdbWithRegionLanguage(req.user);

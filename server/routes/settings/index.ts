@@ -27,6 +27,7 @@ import type { JobId, Library, MainSettings } from '@server/lib/settings';
 import { getSettings, mobileAnnouncementColors } from '@server/lib/settings';
 import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
+import customListRoutes from '@server/routes/settings/customLists';
 import discoverSettingRoutes from '@server/routes/settings/discover';
 import { ApiError } from '@server/types/error';
 import { appDataPath } from '@server/utils/appDataVolume';
@@ -58,10 +59,13 @@ import sonarrRoutes from './sonarr';
 
 const settingsRoutes = Router();
 
+export const MDBLIST_API_KEY_MASK = '********';
+
 settingsRoutes.use('/notifications', notificationRoutes);
 settingsRoutes.use('/radarr', radarrRoutes);
 settingsRoutes.use('/sonarr', sonarrRoutes);
 settingsRoutes.use('/discover', discoverSettingRoutes);
+settingsRoutes.use('/custom-lists', customListRoutes);
 settingsRoutes.use('/metadatas', metadataRoutes);
 
 const filteredMainSettings = (
@@ -69,10 +73,17 @@ const filteredMainSettings = (
   main: MainSettings
 ): Partial<MainSettings> => {
   if (!user?.hasPermission(Permission.ADMIN)) {
-    return omit(main, 'apiKey');
+    return omit(main, 'apiKey', 'mdblistApiKey');
   }
 
-  return main;
+  if (user.id !== 1) {
+    return omit(main, 'mdblistApiKey');
+  }
+
+  return {
+    ...main,
+    mdblistApiKey: main.mdblistApiKey ? MDBLIST_API_KEY_MASK : '',
+  };
 };
 
 settingsRoutes.get('/main', (req, res, next) => {
@@ -105,6 +116,26 @@ const mobileAnnouncementSchema = z
 
 settingsRoutes.post('/main', async (req, res, next) => {
   const settings = getSettings();
+
+  const updatesMdblistApiKey = Object.prototype.hasOwnProperty.call(
+    req.body,
+    'mdblistApiKey'
+  );
+  if (updatesMdblistApiKey && req.user?.id !== 1) {
+    return next({
+      status: 403,
+      message: 'Only the owner can update the MDBList API key.',
+    });
+  }
+
+  const parsedMdblistApiKey = z
+    .string()
+    .trim()
+    .max(200)
+    .safeParse(req.body.mdblistApiKey);
+  if (updatesMdblistApiKey && !parsedMdblistApiKey.success) {
+    return next({ status: 400, message: 'Invalid MDBList API key.' });
+  }
 
   const announcementKeys = [
     'mobileAnnouncementEnabled',
@@ -154,9 +185,18 @@ settingsRoutes.post('/main', async (req, res, next) => {
 
   const nextSettings = omit(
     req.body,
+    'mdblistApiKey',
     'mobileAnnouncementRevision',
     'mobileAnnouncementExpiresAt'
   );
+  if (
+    updatesMdblistApiKey &&
+    parsedMdblistApiKey.success &&
+    parsedMdblistApiKey.data &&
+    parsedMdblistApiKey.data !== MDBLIST_API_KEY_MASK
+  ) {
+    nextSettings.mdblistApiKey = parsedMdblistApiKey.data;
+  }
   if (updatesAnnouncement) {
     Object.assign(nextSettings, {
       mobileAnnouncementEnabled: announcement.data.enabled,
@@ -179,7 +219,11 @@ settingsRoutes.post('/main', async (req, res, next) => {
   settings.main = merge(settings.main, nextSettings);
   await settings.save();
 
-  return res.status(200).json(settings.main);
+  if (!req.user) {
+    return next({ status: 500, message: 'User missing from request.' });
+  }
+
+  return res.status(200).json(filteredMainSettings(req.user, settings.main));
 });
 
 settingsRoutes.get('/network', (req, res) => {
