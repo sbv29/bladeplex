@@ -21,7 +21,7 @@ const messages = defineMessages('components.Settings', {
   menuAbout: 'About',
   menuMetadataProviders: 'Metadata Providers',
   menuCustomLists: 'Custom Lists',
-  menuMdblistCollections: 'MDBList Collections',
+  menuMdblistCollections: 'Collections',
 });
 
 type SettingsLayoutProps = {

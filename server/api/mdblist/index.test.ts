@@ -4,6 +4,42 @@ import { describe, it, mock } from 'node:test';
 import MdblistAPI from '@server/api/mdblist';
 
 describe('MdblistAPI list pagination', () => {
+  it('normalizes the documented TV envelope without nested ids', async () => {
+    const api = new MdblistAPI('secret');
+    const axiosClient = (
+      api as unknown as {
+        axios: {
+          get: () => Promise<{ data: unknown }>;
+        };
+      }
+    ).axios;
+    mock.method(axiosClient, 'get', async () => ({
+      data: {
+        shows: [
+          {
+            id: 258902,
+            rank: '1',
+            adult: 0,
+            title: 'English Teacher',
+            imdb_id: 'tt20782190',
+            tvdb_id: 421968,
+            mediatype: 'show',
+            release_year: 2024,
+          },
+        ],
+        pagination: {},
+      },
+    }));
+
+    const shows = await api.getShowList({
+      reference: { type: 'public', username: 'owner', slug: 'shows' },
+    });
+
+    assert.equal(shows[0].ids.tmdb, 258902);
+    assert.equal(shows[0].ids.tvdb, 421968);
+    assert.equal(shows[0].ids.imdb, 'tt20782190');
+  });
+
   it('follows documented cursors and preserves source order', async () => {
     const api = new MdblistAPI('secret');
     const requestedCursors: (string | undefined)[] = [];

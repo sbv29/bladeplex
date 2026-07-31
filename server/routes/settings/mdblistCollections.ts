@@ -3,6 +3,7 @@ import CustomList from '@server/entity/CustomList';
 import {
   MDBLIST_COLLECTION_MAX_TITLE_LENGTH,
   MDBLIST_COLLECTION_MAX_URL_LENGTH,
+  MDBLIST_COLLECTION_OVERLAY_COLOR_PATTERN,
   MdblistCollectionError,
   MdblistCollectionService,
 } from '@server/lib/mdblistCollections';
@@ -22,6 +23,11 @@ const createSchema = z.object({
     .min(1)
     .max(MDBLIST_COLLECTION_MAX_TITLE_LENGTH)
     .optional(),
+  artworkOverlayColor: z
+    .string()
+    .regex(MDBLIST_COLLECTION_OVERLAY_COLOR_PATTERN)
+    .optional(),
+  mediaType: z.enum(['movie', 'tv']).default('movie'),
 });
 const updateSchema = z
   .object({
@@ -37,10 +43,20 @@ const updateSchema = z
       .min(1)
       .max(MDBLIST_COLLECTION_MAX_TITLE_LENGTH)
       .optional(),
+    artworkOverlayColor: z
+      .string()
+      .regex(MDBLIST_COLLECTION_OVERLAY_COLOR_PATTERN)
+      .optional(),
   })
-  .refine((value) => value.url !== undefined || value.title !== undefined);
+  .refine(
+    (value) =>
+      value.url !== undefined ||
+      value.title !== undefined ||
+      value.artworkOverlayColor !== undefined
+  );
 const reorderSchema = z.object({
   ids: z.array(z.number().int().positive()).max(100),
+  mediaType: z.enum(['movie', 'tv']).default('movie'),
 });
 const enabledSchema = z.object({ enabled: z.boolean() });
 
@@ -58,6 +74,7 @@ const serialize = (list: CustomList) => ({
   mdblistId: list.mdblistId,
   selectedArtworkTmdbId: list.selectedArtworkTmdbId,
   selectedArtworkPosterPath: list.selectedArtworkPosterPath,
+  artworkOverlayColor: list.artworkOverlayColor,
   lastValidatedAt: list.lastValidatedAt,
   metadata: list.metadata ? JSON.parse(list.metadata) : null,
   createdAt: list.createdAt,
@@ -99,8 +116,8 @@ routes.use((req, _res, next) => {
 
 routes.get('/', async (_req, res) => {
   const items = await getRepository(CustomList).find({
-    where: { provider: 'mdblist', mediaType: 'movie' },
-    order: { sortOrder: 'ASC', id: 'ASC' },
+    where: { provider: 'mdblist', isCollection: true },
+    order: { mediaType: 'ASC', sortOrder: 'ASC', id: 'ASC' },
   });
   return res.json({
     mdblistConfigured: Boolean(getSettings().main.mdblistApiKey),
@@ -123,7 +140,7 @@ routes.post(
     try {
       const validated = await new MdblistCollectionService({
         language: req.locale,
-      }).validate(input.data.url, input.data.title);
+      }).validate(input.data.url, input.data.title, input.data.mediaType);
       return res.json({
         canonicalUrl: validated.canonicalUrl,
         listType: validated.listType,
@@ -164,9 +181,12 @@ routes.put('/reorder', async (req, res, next) => {
     return next({ status: 400, message: 'Invalid collection order.' });
   try {
     return res.json(
-      (await new MdblistCollectionService().reorder(input.data.ids)).map(
-        serialize
-      )
+      (
+        await new MdblistCollectionService().reorder(
+          input.data.ids,
+          input.data.mediaType
+        )
+      ).map(serialize)
     );
   } catch (error) {
     return handleError(error, next);

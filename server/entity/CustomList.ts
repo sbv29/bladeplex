@@ -14,7 +14,7 @@ export type CustomListProvider = 'mdblist';
 @Entity()
 @Index(
   'UQ_custom_list_source',
-  ['provider', 'listType', 'username', 'slug', 'mediaType'],
+  ['provider', 'listType', 'username', 'slug', 'mediaType', 'isCollection'],
   { unique: true }
 )
 @Index('IDX_custom_list_collection_order', [
@@ -51,6 +51,9 @@ class CustomList {
   @Column({ type: 'int', default: 0 })
   public itemCount: number;
 
+  @Column({ default: false })
+  public isCollection: boolean;
+
   @Column({ default: true })
   public enabled: boolean;
 
@@ -65,6 +68,9 @@ class CustomList {
 
   @Column({ type: 'varchar', nullable: true })
   public selectedArtworkPosterPath?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  public artworkOverlayColor?: string | null;
 
   @DbAwareColumn({ type: 'datetime', nullable: true })
   public lastValidatedAt?: Date | null;

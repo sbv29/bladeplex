@@ -151,6 +151,8 @@ const DiscoverSliderEdit = ({
         return slider.title ?? intl.formatMessage(sliderTitles.mdblistCustomTv);
       case DiscoverSliderType.MDBLIST_COLLECTIONS:
         return intl.formatMessage(sliderTitles.mdblistCollections);
+      case DiscoverSliderType.MDBLIST_TV_COLLECTIONS:
+        return intl.formatMessage(sliderTitles.mdblistTvCollections);
       case DiscoverSliderType.MOVIE_GENRES:
         return intl.formatMessage(sliderTitles.moviegenres);
       case DiscoverSliderType.UPCOMING_MOVIES:

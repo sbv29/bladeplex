@@ -95,16 +95,18 @@ const CollectionQuerySchema = z.object({
 
 discoverRoutes.get('/mdblist/collections', async (_req, res) => {
   const lists = await getRepository(CustomList).find({
-    where: { provider: 'mdblist', mediaType: 'movie', enabled: true },
-    order: { sortOrder: 'ASC', id: 'ASC' },
+    where: { provider: 'mdblist', isCollection: true, enabled: true },
+    order: { mediaType: 'ASC', sortOrder: 'ASC', id: 'ASC' },
   });
   return res.json(
     lists.map((list) => ({
       id: list.id,
       title: list.title,
       itemCount: list.itemCount,
+      mediaType: list.mediaType,
       selectedArtworkTmdbId: list.selectedArtworkTmdbId,
       selectedArtworkPosterPath: list.selectedArtworkPosterPath,
+      artworkOverlayColor: list.artworkOverlayColor,
     }))
   );
 });
@@ -116,7 +118,7 @@ discoverRoutes.get('/mdblist/collections/:id', async (req, res) => {
         where: {
           id,
           provider: 'mdblist',
-          mediaType: 'movie',
+          isCollection: true,
           ...(isServerOwner(req.user) ? {} : { enabled: true }),
         },
       })
@@ -126,12 +128,14 @@ discoverRoutes.get('/mdblist/collections/:id', async (req, res) => {
   return res.json({
     id: list.id,
     title: list.title,
+    mediaType: list.mediaType,
     itemCount: list.itemCount,
     enabled: list.enabled,
     sourceUrl: list.sourceUrl,
     lastValidatedAt: list.lastValidatedAt,
     selectedArtworkTmdbId: list.selectedArtworkTmdbId,
     selectedArtworkPosterPath: list.selectedArtworkPosterPath,
+    artworkOverlayColor: list.artworkOverlayColor,
   });
 });
 
@@ -166,6 +170,48 @@ discoverRoutes.get('/mdblist/collections/:id/movies', async (req, res) => {
     return res
       .status(503)
       .json({ message: 'MDBList collection is temporarily unavailable.' });
+  }
+});
+
+discoverRoutes.get('/mdblist/collections/:id/tv', async (req, res) => {
+  const id = Number(req.params.id);
+  const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+  const list = Number.isSafeInteger(id)
+    ? await getRepository(CustomList).findOne({
+        where: {
+          id,
+          provider: 'mdblist',
+          mediaType: 'tv',
+          isCollection: true,
+          ...(isServerOwner(req.user) ? {} : { enabled: true }),
+        },
+      })
+    : null;
+  if (!list) {
+    return res.status(404).json({ message: 'TV collection not found.' });
+  }
+  try {
+    const provider = new MdblistProvider({
+      list: createMdblistListReference(list),
+      mediaType: 'tv',
+    });
+    const resultPage = await provider.getStreamingChartPage({
+      tmdb: createTmdbWithRegionLanguage(req.user),
+      user: req.user,
+      language: req.locale,
+      page,
+    });
+    return res.status(200).json({ ...resultPage, title: list.title });
+  } catch (error) {
+    logger.warn('Unable to prepare an MDBList TV collection', {
+      label: 'MDBList',
+      collectionId: id,
+      errorType:
+        error instanceof Error ? error.constructor.name : 'UnknownError',
+    });
+    return res.status(503).json({
+      message: 'TV collection is temporarily unavailable.',
+    });
   }
 });
 
@@ -214,7 +260,12 @@ discoverRoutes.get('/mdblist/lists/:listId/movies', async (req, res) => {
   }
 
   const list = await getRepository(CustomList).findOne({
-    where: { id: listId, provider: 'mdblist', mediaType: 'movie' },
+    where: {
+      id: listId,
+      provider: 'mdblist',
+      mediaType: 'movie',
+      isCollection: false,
+    },
   });
   if (!list) {
     return res.status(404).json({ message: 'Custom list not found.' });
@@ -256,7 +307,12 @@ discoverRoutes.get('/mdblist/lists/:listId/tv', async (req, res) => {
   }
 
   const list = await getRepository(CustomList).findOne({
-    where: { id: listId, provider: 'mdblist', mediaType: 'tv' },
+    where: {
+      id: listId,
+      provider: 'mdblist',
+      mediaType: 'tv',
+      isCollection: false,
+    },
   });
   if (!list) {
     return res.status(404).json({ message: 'Custom list not found.' });

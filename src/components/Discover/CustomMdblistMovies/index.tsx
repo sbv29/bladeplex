@@ -6,11 +6,7 @@ import useDiscover from '@app/hooks/useDiscover';
 import { useBatchUpdateQueryParams } from '@app/hooks/useUpdateQueryParams';
 import ErrorPage from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
-import {
-  ArrowPathRoundedSquareIcon,
-  BarsArrowDownIcon,
-  FunnelIcon,
-} from '@heroicons/react/24/solid';
+import { ArrowPathRoundedSquareIcon } from '@heroicons/react/24/solid';
 import type { MovieResult } from '@server/models/Search';
 import axios from 'axios';
 import { useRouter } from 'next/router';
@@ -27,11 +23,6 @@ const messages = defineMessages('components.Discover.CustomMdblistMovies', {
   rating: 'Rating: Highest',
   popularity: 'Popularity',
   random: 'Shuffled',
-  genre: 'Genre ID',
-  yearFrom: 'Year From',
-  yearTo: 'Year To',
-  ratingMinimum: 'Minimum Rating',
-  hideAvailable: 'Hide Available',
 });
 
 const allowedSorts = new Set([
@@ -45,7 +36,13 @@ const allowedSorts = new Set([
   'popularity.desc',
 ]);
 
-const CustomMdblistMovies = ({ listId }: { listId: number }) => {
+const CustomMdblistMovies = ({
+  listId,
+  collection = true,
+}: {
+  listId: number;
+  collection?: boolean;
+}) => {
   const intl = useIntl();
   const router = useRouter();
   const updateQuery = useBatchUpdateQueryParams({});
@@ -59,19 +56,6 @@ const CustomMdblistMovies = ({ listId }: { listId: number }) => {
   const options = {
     sortBy,
     ...(seed ? { seed } : {}),
-    ...(typeof router.query.genre === 'string'
-      ? { genre: router.query.genre }
-      : {}),
-    ...(typeof router.query.yearGte === 'string'
-      ? { yearGte: router.query.yearGte }
-      : {}),
-    ...(typeof router.query.yearLte === 'string'
-      ? { yearLte: router.query.yearLte }
-      : {}),
-    ...(typeof router.query.voteAverageGte === 'string'
-      ? { voteAverageGte: router.query.voteAverageGte }
-      : {}),
-    ...(router.query.hideAvailable === 'true' ? { hideAvailable: 'true' } : {}),
   };
   const {
     isLoadingInitialData,
@@ -83,7 +67,7 @@ const CustomMdblistMovies = ({ listId }: { listId: number }) => {
     error,
     firstResultData,
   } = useDiscover<MovieResult, { title: string; itemCount: number }>(
-    `/api/v1/discover/mdblist/collections/${listId}/movies`,
+    `/api/v1/discover/mdblist/${collection ? 'collections' : 'lists'}/${listId}/movies`,
     options
   );
   const title =
@@ -112,19 +96,6 @@ const CustomMdblistMovies = ({ listId }: { listId: number }) => {
       updateQuery({ sortBy: value, seed: undefined });
     }
   };
-  const field = (name: string, label: string) => (
-    <input
-      aria-label={label}
-      className="w-28"
-      inputMode="numeric"
-      placeholder={label}
-      value={typeof router.query[name] === 'string' ? router.query[name] : ''}
-      onChange={(event) =>
-        updateQuery({ [name]: event.target.value || undefined })
-      }
-    />
-  );
-
   return (
     <>
       <PageTitle title={title} />
@@ -138,9 +109,6 @@ const CustomMdblistMovies = ({ listId }: { listId: number }) => {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-l-md border border-gray-500 bg-gray-800 px-2">
-            <BarsArrowDownIcon className="h-5 w-5" />
-          </span>
           <select
             aria-label="Sort collection"
             value={sortBy}
@@ -174,25 +142,6 @@ const CustomMdblistMovies = ({ listId }: { listId: number }) => {
             <span>{intl.formatMessage(messages.shuffle)}</span>
           </Button>
         </div>
-      </div>
-      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg bg-gray-800 p-3 ring-1 ring-gray-700">
-        <FunnelIcon className="h-5 w-5 text-gray-400" />
-        {field('genre', intl.formatMessage(messages.genre))}
-        {field('yearGte', intl.formatMessage(messages.yearFrom))}
-        {field('yearLte', intl.formatMessage(messages.yearTo))}
-        {field('voteAverageGte', intl.formatMessage(messages.ratingMinimum))}
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={router.query.hideAvailable === 'true'}
-            onChange={(event) =>
-              updateQuery({
-                hideAvailable: event.target.checked ? 'true' : undefined,
-              })
-            }
-          />
-          {intl.formatMessage(messages.hideAvailable)}
-        </label>
       </div>
       <ListView
         items={titles}

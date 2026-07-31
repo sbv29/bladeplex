@@ -157,6 +157,7 @@ const serializeLists = async (lists: CustomList[]) => {
 
 customListRoutes.get('/', async (_req, res) => {
   const lists = await getRepository(CustomList).find({
+    where: { isCollection: false },
     order: { createdAt: 'ASC' },
   });
   return res.json({
@@ -206,6 +207,7 @@ customListRoutes.post('/', async (req, res, next) => {
         username,
         slug: validated.reference.slug,
         mediaType: validated.mediaType,
+        isCollection: false,
       },
     });
     if (existing) {
@@ -221,6 +223,7 @@ customListRoutes.post('/', async (req, res, next) => {
       const list = await listRepository.save(
         new CustomList({
           provider: 'mdblist',
+          isCollection: false,
           listType: validated.listType,
           title: validated.title,
           sourceUrl: validated.canonicalUrl,
@@ -279,7 +282,7 @@ customListRoutes.put('/:listId', async (req, res, next) => {
       const listRepository = manager.getRepository(CustomList);
       const sliderRepository = manager.getRepository(DiscoverSlider);
       const existing = await listRepository.findOneOrFail({
-        where: { id: listId },
+        where: { id: listId, isCollection: false },
       });
       existing.title = parsed.data.title;
       await sliderRepository.update(
@@ -307,7 +310,7 @@ customListRoutes.delete('/:listId', async (req, res, next) => {
       const listRepository = manager.getRepository(CustomList);
       const sliderRepository = manager.getRepository(DiscoverSlider);
       const list = await listRepository.findOneOrFail({
-        where: { id: listId },
+        where: { id: listId, isCollection: false },
       });
       await sliderRepository.delete({
         type:

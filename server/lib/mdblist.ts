@@ -20,6 +20,7 @@ import {
   mapTvResult,
 } from '@server/models/Search';
 import { createHash } from 'node:crypto';
+import { ZodError } from 'zod';
 
 export const JUSTWATCH_STREAMING_CHART_SLUG =
   'justwatch-streaming-charts' as const;
@@ -64,6 +65,9 @@ interface PreparedRankedMovie {
 export interface PreparedMdblistMovie extends MovieResult {
   mdblistRank: number;
 }
+export type PreparedMdblistCollectionItem = (MovieResult | TvResult) & {
+  mdblistRank: number;
+};
 
 interface MdblistSourceClient {
   getMovieList?(options: {
@@ -186,6 +190,14 @@ export class MdblistProvider {
         label: 'MDBList',
         errorType:
           error instanceof Error ? error.constructor.name : 'UnknownError',
+        ...(error instanceof ZodError
+          ? {
+              validationIssues: error.issues.slice(0, 10).map((issue) => ({
+                path: issue.path.join('.'),
+                code: issue.code,
+              })),
+            }
+          : {}),
         servingStale: Boolean(stale),
       });
       return stale ?? [];
@@ -218,16 +230,12 @@ export class MdblistProvider {
   }: {
     tmdb: TheMovieDb;
     language?: string;
-  }): Promise<PreparedMdblistMovie[]> {
-    if (this.mediaType !== 'movie') {
-      return [];
-    }
-
+  }): Promise<PreparedMdblistCollectionItem[]> {
     const prepared = await this.getPreparedRankedMovies({ tmdb, language });
     return prepared.map(({ item, movie }) => ({
-      ...(movie as MovieResult),
+      ...movie,
       mdblistRank: item.rank,
-    }));
+    })) as PreparedMdblistCollectionItem[];
   }
 
   public async getStreamingChartPage({

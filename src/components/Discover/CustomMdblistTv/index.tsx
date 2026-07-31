@@ -12,10 +12,16 @@ const messages = defineMessages('components.Discover.CustomMdblistTv', {
   fallbackTitle: 'MDBList Series',
 });
 
-const CustomMdblistTv = ({ listId }: { listId: number }) => {
+const CustomMdblistTv = ({
+  listId,
+  collection = false,
+}: {
+  listId: number;
+  collection?: boolean;
+}) => {
   const intl = useIntl();
   const discover = useDiscover<TvResult, { title: string }>(
-    `/api/v1/discover/mdblist/lists/${listId}/tv`
+    `/api/v1/discover/mdblist/${collection ? 'collections' : 'lists'}/${listId}/tv`
   );
   const title =
     discover.firstResultData?.title ??

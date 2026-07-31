@@ -44,6 +44,24 @@ const sourceItems = (ids = [10, 20, 30]) =>
     mediatype: 'movie' as const,
   }));
 
+const tvDetails = (id: number) =>
+  ({
+    id,
+    adult: false,
+    backdrop_path: null,
+    first_air_date: '2026-01-01',
+    genres: [{ id: 18, name: 'Drama' }],
+    name: `Show ${id}`,
+    origin_country: ['US'],
+    original_language: 'en',
+    original_name: `Show ${id}`,
+    overview: '',
+    popularity: id,
+    poster_path: `/show-${id}.jpg`,
+    vote_average: 8,
+    vote_count: 20,
+  }) as unknown as Awaited<ReturnType<TheMovieDb['getTvShow']>>;
+
 const createDependencies = () => {
   const client = new MdblistAPI('configured');
   mock.method(
@@ -105,7 +123,7 @@ describe('MdblistCollectionService', () => {
     assert.equal(result.preview.length, 3);
   });
 
-  it('rejects missing keys, private lists, and non-movie lists safely', async () => {
+  it('rejects missing keys, private lists, and unsupported lists safely', async () => {
     const dependencies = createDependencies();
     await assert.rejects(
       new MdblistCollectionService({ apiKey: '', ...dependencies }).validate(
@@ -140,7 +158,7 @@ describe('MdblistCollectionService', () => {
       id: 2,
       name: 'Shows',
       private: false,
-      mediatype: 'show',
+      mediatype: 'music',
       items: 1,
     }));
     await assert.rejects(
@@ -149,7 +167,7 @@ describe('MdblistCollectionService', () => {
         client: showClient,
         tmdb: dependencies.tmdb,
       }).validate('https://mdblist.com/lists/owner/shows'),
-      /Only MDBList movie lists/
+      /Only MDBList movie and TV lists/
     );
   });
 
@@ -170,6 +188,7 @@ describe('MdblistCollectionService', () => {
     assert.equal(first.mdblistId, 11);
     assert.ok(first.selectedArtworkTmdbId);
     assert.ok(first.selectedArtworkPosterPath);
+    assert.equal(first.artworkOverlayColor, '#4f46e5');
     assert.ok(first.lastValidatedAt);
     assert.equal(first.enabled, true);
     assert.equal(second.sortOrder, first.sortOrder + 1);
@@ -183,6 +202,18 @@ describe('MdblistCollectionService', () => {
     assert.equal(
       (await service.update(first.id, { title: 'Updated' })).title,
       'Updated'
+    );
+    assert.equal(
+      (
+        await service.update(first.id, {
+          artworkOverlayColor: '#dc2626',
+        })
+      ).artworkOverlayColor,
+      '#dc2626'
+    );
+    await assert.rejects(
+      service.update(first.id, { artworkOverlayColor: 'red' }),
+      /Invalid artwork overlay color/
     );
     assert.equal((await service.setEnabled(first.id, false)).enabled, false);
     assert.deepEqual(
@@ -241,6 +272,46 @@ describe('MdblistCollectionService', () => {
 
     assert.equal(collection.selectedArtworkTmdbId, null);
     assert.equal(collection.selectedArtworkPosterPath, null);
+  });
+
+  it('creates and orders TV collections independently from movies', async () => {
+    const client = new MdblistAPI('configured');
+    mock.method(client, 'getListMetadata', async () => ({
+      id: 55,
+      name: 'Great Series',
+      private: false,
+      mediatype: 'show',
+      items: 2,
+    }));
+    mock.method(client, 'getShowList', async () =>
+      [101, 202].map((id, index) => ({
+        rank: index + 1,
+        adult: 0,
+        title: `Show ${id}`,
+        release_year: 2026,
+        ids: { tmdb: id },
+        mediatype: 'show' as const,
+      }))
+    );
+    const tmdb = {
+      getTvShow: async ({ tvId }: { tvId: number }) => tvDetails(tvId),
+    } as unknown as TheMovieDb;
+    const service = new MdblistCollectionService({
+      apiKey: 'configured',
+      client,
+      tmdb,
+    });
+    const collection = await service.create({
+      url: 'https://mdblist.com/lists/official/shows/great-series',
+    });
+
+    assert.equal(collection.mediaType, 'tv');
+    assert.equal(collection.title, 'Great Series');
+    assert.ok(collection.selectedArtworkPosterPath);
+    assert.deepEqual(
+      (await service.reorder([collection.id], 'tv')).map((item) => item.id),
+      [collection.id]
+    );
   });
 
   it('filters before pagination and keeps seeded shuffle stable', async () => {

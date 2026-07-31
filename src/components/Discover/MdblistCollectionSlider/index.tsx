@@ -7,7 +7,8 @@ import { useIntl } from 'react-intl';
 import useSWR from 'swr';
 
 const messages = defineMessages('components.Discover.MdblistCollectionSlider', {
-  title: 'MDBList Collections',
+  moviesTitle: 'Movie Collections',
+  tvTitle: 'TV Collections',
   edit: 'Edit {title}',
 });
 
@@ -15,10 +16,16 @@ export interface MdblistCollectionTile {
   id: number;
   title: string;
   itemCount: number;
+  mediaType: 'movie' | 'tv';
   selectedArtworkPosterPath?: string | null;
+  artworkOverlayColor?: string | null;
 }
 
-const MdblistCollectionSlider = () => {
+const MdblistCollectionSlider = ({
+  mediaType,
+}: {
+  mediaType: 'movie' | 'tv';
+}) => {
   const intl = useIntl();
   const router = useRouter();
   const { user } = useUser();
@@ -27,20 +34,25 @@ const MdblistCollectionSlider = () => {
     { revalidateOnFocus: false }
   );
 
-  if ((data && data.length === 0) || error) return null;
+  const collections = data?.filter((item) => item.mediaType === mediaType);
+  if ((collections && collections.length === 0) || error) return null;
 
   return (
     <>
       <div className="slider-header">
         <div className="slider-title">
-          <span>{intl.formatMessage(messages.title)}</span>
+          <span>
+            {intl.formatMessage(
+              mediaType === 'movie' ? messages.moviesTitle : messages.tvTitle
+            )}
+          </span>
         </div>
       </div>
       <Slider
         sliderKey="mdblist-collections"
         isLoading={!data}
         isEmpty={false}
-        items={(data ?? []).map((collection) => (
+        items={(collections ?? []).map((collection) => (
           <GenreCard
             key={collection.id}
             name={collection.title}
@@ -49,7 +61,12 @@ const MdblistCollectionSlider = () => {
                 ? `https://image.tmdb.org/t/p/w1280${collection.selectedArtworkPosterPath}`
                 : undefined
             }
-            url={`/discover/movies/mdblist/${collection.id}`}
+            url={
+              mediaType === 'movie'
+                ? `/discover/movies/mdblist/${collection.id}`
+                : `/discover/tv/mdblist-collection/${collection.id}`
+            }
+            overlayColor={collection.artworkOverlayColor ?? '#4f46e5'}
             onEdit={
               user?.id === 1
                 ? () =>

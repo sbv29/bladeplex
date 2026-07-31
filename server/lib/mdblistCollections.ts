@@ -13,6 +13,7 @@ import type { User } from '@server/entity/User';
 import {
   MdblistProvider,
   invalidateMdblistListCache,
+  type PreparedMdblistCollectionItem,
   type PreparedMdblistMovie,
 } from '@server/lib/mdblist';
 import {
@@ -27,6 +28,8 @@ export const MDBLIST_COLLECTION_MAX_COUNT = 100;
 export const MDBLIST_COLLECTION_MAX_TITLE_LENGTH = 100;
 export const MDBLIST_COLLECTION_MAX_URL_LENGTH = 500;
 export const MDBLIST_COLLECTION_MAX_METADATA_LENGTH = 10_000;
+export const MDBLIST_COLLECTION_DEFAULT_OVERLAY_COLOR = '#4f46e5';
+export const MDBLIST_COLLECTION_OVERLAY_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
 export type MdblistCollectionErrorCode =
   | 'duplicate'
@@ -61,11 +64,11 @@ export interface ValidatedMdblistCollection {
   displayTitle: string;
   owner: string;
   slug: string;
-  mediaType: 'movie';
+  mediaType: 'movie' | 'tv';
   itemCount: number;
   usableItemCount: number;
   preview: MdblistCollectionPreviewItem[];
-  movies: PreparedMdblistMovie[];
+  movies: PreparedMdblistCollectionItem[];
   validatedAt: Date;
 }
 
@@ -130,21 +133,26 @@ const serializeMetadata = (value: Record<string, unknown>): string => {
   return serialized;
 };
 
-const isMovieMetadata = (metadata: MdblistListMetadata): boolean => {
+const metadataMediaType = (
+  metadata: MdblistListMetadata
+): 'movie' | 'tv' | undefined => {
   const mediaType = metadata.mediatype?.toLowerCase();
-  return !mediaType || mediaType === 'movie' || mediaType === 'movies';
+  if (!mediaType) return undefined;
+  if (mediaType === 'movie' || mediaType === 'movies') return 'movie';
+  if (['tv', 'show', 'shows', 'series'].includes(mediaType)) return 'tv';
+  return undefined;
 };
 
-const eligibleArtwork = (movies: PreparedMdblistMovie[]) =>
+const eligibleArtwork = (movies: PreparedMdblistCollectionItem[]) =>
   movies.filter(
-    (movie): movie is PreparedMdblistMovie & { posterPath: string } =>
+    (movie): movie is PreparedMdblistCollectionItem & { posterPath: string } =>
       Boolean(movie.posterPath)
   );
 
 const chooseArtwork = (
-  movies: PreparedMdblistMovie[],
+  movies: PreparedMdblistCollectionItem[],
   currentTmdbId?: number | null
-): PreparedMdblistMovie | undefined => {
+): PreparedMdblistCollectionItem | undefined => {
   const eligible = eligibleArtwork(movies);
   const alternatives = currentTmdbId
     ? eligible.filter((movie) => movie.id !== currentTmdbId)
@@ -152,6 +160,19 @@ const chooseArtwork = (
   const candidates = alternatives.length ? alternatives : eligible;
   return candidates.length
     ? candidates[randomInt(candidates.length)]
+    : undefined;
+};
+
+const chooseValidatedArtwork = (validated: ValidatedMdblistCollection) => {
+  const hydrated = chooseArtwork(validated.movies);
+  if (hydrated) {
+    return { id: hydrated.id, posterPath: hydrated.posterPath };
+  }
+  const preview = validated.preview.length
+    ? validated.preview[randomInt(validated.preview.length)]
+    : undefined;
+  return preview
+    ? { id: preview.tmdbId, posterPath: preview.posterPath }
     : undefined;
 };
 
@@ -170,7 +191,8 @@ export class MdblistCollectionService {
 
   public async validate(
     url: string,
-    displayTitle?: string
+    displayTitle?: string,
+    requestedMediaType?: 'movie' | 'tv'
   ): Promise<ValidatedMdblistCollection> {
     if (!this.apiKey.trim()) {
       throw new MdblistCollectionError(
@@ -196,13 +218,6 @@ export class MdblistCollectionService {
         'invalid'
       );
     }
-    if (parsed.mediaType === 'tv') {
-      throw new MdblistCollectionError(
-        'Only public MDBList movie lists are supported as collections.',
-        'invalid'
-      );
-    }
-
     let metadata: MdblistListMetadata;
     try {
       metadata = await this.client.getListMetadata(parsed.reference);
@@ -218,9 +233,21 @@ export class MdblistCollectionService {
         'invalid'
       );
     }
-    if (!isMovieMetadata(metadata)) {
+    const upstreamMediaType = metadataMediaType(metadata);
+    if (metadata.mediatype?.trim() && !upstreamMediaType) {
       throw new MdblistCollectionError(
-        'Only MDBList movie lists are supported as collections.',
+        'Only MDBList movie and TV lists are supported as collections.',
+        'invalid'
+      );
+    }
+    const mediaType =
+      requestedMediaType ?? parsed.mediaType ?? upstreamMediaType ?? 'movie';
+    if (
+      (parsed.mediaType && parsed.mediaType !== mediaType) ||
+      (upstreamMediaType && upstreamMediaType !== mediaType)
+    ) {
+      throw new MdblistCollectionError(
+        `This MDBList source is not a ${mediaType === 'movie' ? 'movie' : 'TV'} list.`,
         'invalid'
       );
     }
@@ -235,7 +262,7 @@ export class MdblistCollectionService {
       apiKey: this.apiKey,
       client: this.client,
       list: parsed.reference,
-      mediaType: 'movie',
+      mediaType,
     });
     const movies = await provider.getPreparedCollection({
       tmdb: this.tmdb,
@@ -250,8 +277,9 @@ export class MdblistCollectionService {
       .slice(0, 5)
       .map((movie) => ({
         tmdbId: movie.id,
-        title: movie.title,
-        releaseDate: movie.releaseDate,
+        title: movie.mediaType === 'movie' ? movie.title : movie.name,
+        releaseDate:
+          movie.mediaType === 'movie' ? movie.releaseDate : movie.firstAirDate,
         posterPath: movie.posterPath,
         rank: movie.mdblistRank,
       }));
@@ -268,7 +296,7 @@ export class MdblistCollectionService {
           ? parsed.reference.username
           : 'official',
       slug: parsed.reference.slug,
-      mediaType: 'movie',
+      mediaType,
       itemCount: metadata.items ?? movies.length,
       usableItemCount: movies.length,
       preview,
@@ -280,11 +308,22 @@ export class MdblistCollectionService {
   public async create(input: {
     url: string;
     title?: string;
+    artworkOverlayColor?: string;
+    mediaType?: 'movie' | 'tv';
   }): Promise<CustomList> {
     const repository = getRepository(CustomList);
+    const validated = await this.validate(
+      input.url,
+      input.title,
+      input.mediaType
+    );
     if (
       (await repository.count({
-        where: { provider: 'mdblist', mediaType: 'movie' },
+        where: {
+          provider: 'mdblist',
+          mediaType: validated.mediaType,
+          isCollection: true,
+        },
       })) >= MDBLIST_COLLECTION_MAX_COUNT
     ) {
       throw new MdblistCollectionError(
@@ -293,30 +332,38 @@ export class MdblistCollectionService {
       );
     }
 
-    const validated = await this.validate(input.url, input.title);
-    await this.assertUnique(validated.reference);
-    const artwork = chooseArtwork(validated.movies);
+    await this.assertUnique(validated.reference, validated.mediaType);
+    const artwork = chooseValidatedArtwork(validated);
     const maximum = await repository
       .createQueryBuilder('list')
       .select('MAX(list.sortOrder)', 'max')
-      .where('list.mediaType = :mediaType', { mediaType: 'movie' })
+      .where('list.mediaType = :mediaType', {
+        mediaType: validated.mediaType,
+      })
+      .andWhere('list.isCollection = :isCollection', {
+        isCollection: true,
+      })
       .getRawOne<{ max: number | null }>();
 
     return repository.save(
       new CustomList({
         provider: 'mdblist',
+        isCollection: true,
         listType: validated.listType,
         title: validated.displayTitle,
         sourceUrl: validated.canonicalUrl,
         username: validated.owner === 'official' ? '' : validated.owner,
         slug: validated.slug,
-        mediaType: 'movie',
+        mediaType: validated.mediaType,
         itemCount: validated.itemCount,
         enabled: true,
         sortOrder: Number(maximum?.max ?? -1) + 1,
         mdblistId: validated.mdblistId,
         selectedArtworkTmdbId: artwork?.id ?? null,
         selectedArtworkPosterPath: artwork?.posterPath ?? null,
+        artworkOverlayColor: this.normalizeOverlayColor(
+          input.artworkOverlayColor
+        ),
         lastValidatedAt: validated.validatedAt,
         metadata: this.metadataFor(validated),
       })
@@ -325,18 +372,29 @@ export class MdblistCollectionService {
 
   public async update(
     id: number,
-    input: { title?: string; url?: string }
+    input: { title?: string; url?: string; artworkOverlayColor?: string }
   ): Promise<CustomList> {
     const repository = getRepository(CustomList);
-    const list = await this.getMovieCollection(id);
+    const list = await this.getCollection(id);
     if (input.url && input.url.trim() !== list.sourceUrl) {
       const oldReference = createMdblistListReference(list);
       const validated = await this.validate(
         input.url,
-        input.title ?? list.title
+        input.title ?? list.title,
+        list.mediaType
       );
-      await this.assertUnique(validated.reference, list.id);
-      const artwork = chooseArtwork(validated.movies);
+      if (validated.mediaType !== list.mediaType) {
+        throw new MdblistCollectionError(
+          'A collection URL cannot change between movies and TV.',
+          'invalid'
+        );
+      }
+      await this.assertUnique(
+        validated.reference,
+        validated.mediaType,
+        list.id
+      );
+      const artwork = chooseValidatedArtwork(validated);
       list.listType = validated.listType;
       list.sourceUrl = validated.canonicalUrl;
       list.username = validated.owner === 'official' ? '' : validated.owner;
@@ -352,16 +410,36 @@ export class MdblistCollectionService {
     } else if (input.title !== undefined) {
       list.title = normalizeTitle(input.title);
     }
+    if (input.artworkOverlayColor !== undefined) {
+      list.artworkOverlayColor = this.normalizeOverlayColor(
+        input.artworkOverlayColor
+      );
+    }
     return repository.save(list);
   }
 
+  private normalizeOverlayColor(color?: string): string {
+    const normalized = color?.trim().toLowerCase();
+    if (!normalized) return MDBLIST_COLLECTION_DEFAULT_OVERLAY_COLOR;
+    if (!MDBLIST_COLLECTION_OVERLAY_COLOR_PATTERN.test(normalized)) {
+      throw new MdblistCollectionError(
+        'Invalid artwork overlay color.',
+        'invalid'
+      );
+    }
+    return normalized;
+  }
+
   public async setEnabled(id: number, enabled: boolean): Promise<CustomList> {
-    const list = await this.getMovieCollection(id);
+    const list = await this.getCollection(id);
     list.enabled = enabled;
     return getRepository(CustomList).save(list);
   }
 
-  public async reorder(ids: number[]): Promise<CustomList[]> {
+  public async reorder(
+    ids: number[],
+    mediaType: 'movie' | 'tv' = 'movie'
+  ): Promise<CustomList[]> {
     if (
       ids.length > MDBLIST_COLLECTION_MAX_COUNT ||
       new Set(ids).size !== ids.length
@@ -369,14 +447,14 @@ export class MdblistCollectionService {
       throw new MdblistCollectionError('Invalid collection order.', 'invalid');
     }
     const current = await getRepository(CustomList).find({
-      where: { provider: 'mdblist', mediaType: 'movie' },
+      where: { provider: 'mdblist', mediaType, isCollection: true },
     });
     if (
       current.length !== ids.length ||
       current.some((list) => !ids.includes(list.id))
     ) {
       throw new MdblistCollectionError(
-        'Collection order must include every movie collection exactly once.',
+        `Collection order must include every ${mediaType} collection exactly once.`,
         'invalid'
       );
     }
@@ -387,16 +465,19 @@ export class MdblistCollectionService {
       }
     });
     return getRepository(CustomList).find({
-      where: { provider: 'mdblist', mediaType: 'movie' },
+      where: { provider: 'mdblist', mediaType, isCollection: true },
       order: { sortOrder: 'ASC', id: 'ASC' },
     });
   }
 
   public async delete(id: number): Promise<void> {
-    const list = await this.getMovieCollection(id);
+    const list = await this.getCollection(id);
     await dataSource.transaction(async (manager) => {
       await manager.getRepository(DiscoverSlider).delete({
-        type: DiscoverSliderType.MDBLIST_CUSTOM_MOVIES,
+        type:
+          list.mediaType === 'movie'
+            ? DiscoverSliderType.MDBLIST_CUSTOM_MOVIES
+            : DiscoverSliderType.MDBLIST_CUSTOM_TV,
         data: String(id),
       });
       await manager.getRepository(CustomList).remove(list);
@@ -405,7 +486,7 @@ export class MdblistCollectionService {
   }
 
   public async shuffleArtwork(id: number): Promise<CustomList> {
-    const list = await this.getMovieCollection(id);
+    const list = await this.getCollection(id);
     const provider = this.providerFor(list);
     const movies = await provider.getPreparedCollection({
       tmdb: this.tmdb,
@@ -418,15 +499,19 @@ export class MdblistCollectionService {
   }
 
   public async refresh(id: number): Promise<CustomList> {
-    const list = await this.getMovieCollection(id);
+    const list = await this.getCollection(id);
     const reference = createMdblistListReference(list);
     invalidateMdblistListCache(reference);
-    const validated = await this.validate(list.sourceUrl, list.title);
+    const validated = await this.validate(
+      list.sourceUrl,
+      list.title,
+      list.mediaType
+    );
     const selectedStillExists = validated.movies.find(
       (movie) =>
         movie.id === list.selectedArtworkTmdbId && Boolean(movie.posterPath)
     );
-    const artwork = selectedStillExists ?? chooseArtwork(validated.movies);
+    const artwork = selectedStillExists ?? chooseValidatedArtwork(validated);
     list.itemCount = validated.itemCount;
     list.mdblistId = validated.mdblistId;
     list.lastValidatedAt = validated.validatedAt;
@@ -447,7 +532,13 @@ export class MdblistCollectionService {
     query: MdblistCollectionQuery;
     allowDisabled?: boolean;
   }) {
-    const list = await this.getMovieCollection(id);
+    const list = await this.getCollection(id);
+    if (list.mediaType !== 'movie') {
+      throw new MdblistCollectionError(
+        'Movie collection not found.',
+        'not_found'
+      );
+    }
     if (!list.enabled && !allowDisabled) {
       throw new MdblistCollectionError(
         'MDBList collection not found.',
@@ -542,11 +633,11 @@ export class MdblistCollectionService {
       apiKey: this.apiKey,
       client: this.client,
       list: createMdblistListReference(list),
-      mediaType: 'movie',
+      mediaType: list.mediaType,
     });
   }
 
-  private async getMovieCollection(id: number): Promise<CustomList> {
+  private async getCollection(id: number): Promise<CustomList> {
     if (!Number.isSafeInteger(id) || id <= 0) {
       throw new MdblistCollectionError(
         'MDBList collection not found.',
@@ -554,7 +645,7 @@ export class MdblistCollectionService {
       );
     }
     const list = await getRepository(CustomList).findOne({
-      where: { id, provider: 'mdblist', mediaType: 'movie' },
+      where: { id, provider: 'mdblist', isCollection: true },
     });
     if (!list) {
       throw new MdblistCollectionError(
@@ -567,15 +658,17 @@ export class MdblistCollectionService {
 
   private async assertUnique(
     reference: MdblistListReference,
+    mediaType: 'movie' | 'tv',
     excludeId?: number
   ): Promise<void> {
     const existing = await getRepository(CustomList).findOne({
       where: {
         provider: 'mdblist',
+        isCollection: true,
         listType: reference.type,
         username: reference.type === 'public' ? reference.username : '',
         slug: reference.slug,
-        mediaType: 'movie',
+        mediaType,
       },
     });
     if (existing && existing.id !== excludeId) {

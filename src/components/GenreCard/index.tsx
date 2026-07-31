@@ -11,6 +11,7 @@ interface GenreCardProps {
   canExpand?: boolean;
   onEdit?: () => void;
   editLabel?: string;
+  overlayColor?: string;
 }
 
 const GenreCard = ({
@@ -20,6 +21,7 @@ const GenreCard = ({
   canExpand = false,
   onEdit,
   editLabel,
+  overlayColor,
 }: GenreCardProps) => {
   const [isHovered, setHovered] = useState(false);
 
@@ -55,8 +57,15 @@ const GenreCard = ({
         )}
         <div
           className={`absolute inset-0 z-10 h-full w-full transition duration-300 ${
-            isHovered ? 'bg-gray-800/10' : 'bg-gray-800/30'
+            overlayColor
+              ? isHovered
+                ? 'opacity-25'
+                : 'opacity-55'
+              : isHovered
+                ? 'bg-gray-800/10'
+                : 'bg-gray-800/30'
           }`}
+          style={overlayColor ? { backgroundColor: overlayColor } : undefined}
         />
         <div className="relative z-20 w-full truncate whitespace-normal text-center text-2xl font-bold text-white sm:text-3xl">
           {name}

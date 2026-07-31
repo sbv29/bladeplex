@@ -23,7 +23,10 @@ class DiscoverSlider {
 
       if (!existingSlider) {
         const sliderToCreate = { ...slider };
-        if (slider.type === DiscoverSliderType.MDBLIST_COLLECTIONS) {
+        if (
+          slider.type === DiscoverSliderType.MDBLIST_COLLECTIONS ||
+          slider.type === DiscoverSliderType.MDBLIST_TV_COLLECTIONS
+        ) {
           const maximum = await sliderRepository
             .createQueryBuilder('slider')
             .select('MAX(slider.order)', 'max')

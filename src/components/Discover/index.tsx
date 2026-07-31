@@ -270,7 +270,18 @@ const Discover = () => {
             );
             break;
           case DiscoverSliderType.MDBLIST_CUSTOM_MOVIES:
-            sliderComponent = null;
+            sliderComponent = slider.data ? (
+              <MediaSlider
+                sliderKey={`mdblist-custom-movies-${slider.data}`}
+                title={
+                  slider.title ??
+                  intl.formatMessage(sliderTitles.mdblistCustomMovies)
+                }
+                url={`/api/v1/discover/mdblist/lists/${slider.data}/movies`}
+                linkUrl={`/discover/movies/mdblist-list/${slider.data}`}
+                hideWhenEmpty
+              />
+            ) : null;
             break;
           case DiscoverSliderType.MDBLIST_CUSTOM_TV:
             sliderComponent = slider.data ? (
@@ -287,7 +298,10 @@ const Discover = () => {
             ) : null;
             break;
           case DiscoverSliderType.MDBLIST_COLLECTIONS:
-            sliderComponent = <MdblistCollectionSlider />;
+            sliderComponent = <MdblistCollectionSlider mediaType="movie" />;
+            break;
+          case DiscoverSliderType.MDBLIST_TV_COLLECTIONS:
+            sliderComponent = <MdblistCollectionSlider mediaType="tv" />;
             break;
           case DiscoverSliderType.MOVIE_GENRES:
             sliderComponent = <MovieGenreSlider />;

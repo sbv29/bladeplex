@@ -5850,6 +5850,12 @@ paths:
               properties:
                 url: { type: string, maxLength: 500 }
                 title: { type: string, maxLength: 100 }
+                artworkOverlayColor:
+                  type: string
+                  pattern: '^#[0-9a-fA-F]{6}$'
+                mediaType:
+                  type: string
+                  enum: [movie, tv]
       responses:
         '201': { description: Collection created }
         '400': { description: Invalid or inaccessible list }
@@ -5857,7 +5863,7 @@ paths:
         '409': { description: Duplicate collection }
   /settings/mdblist-collections/validate:
     post:
-      summary: Validate an MDBList movie-list URL
+      summary: Validate an MDBList movie or TV list URL
       tags: [settings]
       requestBody:
         required: true
@@ -5869,6 +5875,9 @@ paths:
               properties:
                 url: { type: string, maxLength: 500 }
                 title: { type: string, maxLength: 100 }
+                mediaType:
+                  type: string
+                  enum: [movie, tv]
       responses:
         '200': { description: Sanitized validation preview }
         '400': { description: Invalid or inaccessible list }
@@ -5890,6 +5899,9 @@ paths:
                   type: array
                   maxItems: 100
                   items: { type: integer, minimum: 1 }
+                mediaType:
+                  type: string
+                  enum: [movie, tv]
       responses:
         '200': { description: Reordered collections }
         '400': { description: Invalid order }
@@ -5912,6 +5924,9 @@ paths:
               properties:
                 url: { type: string, maxLength: 500 }
                 title: { type: string, maxLength: 100 }
+                artworkOverlayColor:
+                  type: string
+                  pattern: '^#[0-9a-fA-F]{6}$'
       responses:
         '200': { description: Updated collection }
         '403': { description: Server owner required }

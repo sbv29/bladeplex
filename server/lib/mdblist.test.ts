@@ -25,7 +25,7 @@ const sourceMovie = (
 ): MdblistMovieItem => ({
   rank,
   adult: 0,
-  ids: { tmdb: tmdbId, imdb: imdbId },
+  ids: { tmdb: tmdbId, imdb: imdbId, tvdb: null },
   mediatype: 'movie',
 });
 
@@ -50,7 +50,7 @@ const movieDetails = (id: number) =>
 const sourceShow = (rank: number, tmdbId: number): MdblistShowItem => ({
   rank,
   adult: 0,
-  ids: { tmdb: tmdbId },
+  ids: { tmdb: tmdbId, imdb: null, tvdb: null },
   mediatype: 'show',
 });
 
