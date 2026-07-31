@@ -53,10 +53,12 @@ const CustomMdblistMovies = ({
       : 'rank';
   const seed =
     typeof router.query.seed === 'string' ? router.query.seed : undefined;
-  const options = {
-    sortBy,
-    ...(seed ? { seed } : {}),
-  };
+  const options = collection
+    ? {
+        sortBy,
+        ...(seed ? { seed } : {}),
+      }
+    : {};
   const {
     isLoadingInitialData,
     isEmpty,
@@ -108,40 +110,42 @@ const CustomMdblistMovies = ({
             </p>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label="Sort collection"
-            value={sortBy}
-            onChange={(event) => changeSort(event.target.value)}
-          >
-            <option value="rank">{intl.formatMessage(messages.rank)}</option>
-            <option value="random">
-              {intl.formatMessage(messages.random)}
-            </option>
-            <option value="release_date.desc">
-              {intl.formatMessage(messages.releaseNewest)}
-            </option>
-            <option value="release_date.asc">
-              {intl.formatMessage(messages.releaseOldest)}
-            </option>
-            <option value="title.asc">
-              {intl.formatMessage(messages.titleAsc)}
-            </option>
-            <option value="title.desc">
-              {intl.formatMessage(messages.titleDesc)}
-            </option>
-            <option value="rating.desc">
-              {intl.formatMessage(messages.rating)}
-            </option>
-            <option value="popularity.desc">
-              {intl.formatMessage(messages.popularity)}
-            </option>
-          </select>
-          <Button buttonType="primary" onClick={shuffle}>
-            <ArrowPathRoundedSquareIcon />
-            <span>{intl.formatMessage(messages.shuffle)}</span>
-          </Button>
-        </div>
+        {collection && (
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="Sort collection"
+              value={sortBy}
+              onChange={(event) => changeSort(event.target.value)}
+            >
+              <option value="rank">{intl.formatMessage(messages.rank)}</option>
+              <option value="random">
+                {intl.formatMessage(messages.random)}
+              </option>
+              <option value="release_date.desc">
+                {intl.formatMessage(messages.releaseNewest)}
+              </option>
+              <option value="release_date.asc">
+                {intl.formatMessage(messages.releaseOldest)}
+              </option>
+              <option value="title.asc">
+                {intl.formatMessage(messages.titleAsc)}
+              </option>
+              <option value="title.desc">
+                {intl.formatMessage(messages.titleDesc)}
+              </option>
+              <option value="rating.desc">
+                {intl.formatMessage(messages.rating)}
+              </option>
+              <option value="popularity.desc">
+                {intl.formatMessage(messages.popularity)}
+              </option>
+            </select>
+            <Button buttonType="primary" onClick={shuffle}>
+              <ArrowPathRoundedSquareIcon />
+              <span>{intl.formatMessage(messages.shuffle)}</span>
+            </Button>
+          </div>
+        )}
       </div>
       <ListView
         items={titles}
