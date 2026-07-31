@@ -1,5 +1,4 @@
-import type { DiscoverSliderType } from '@server/constants/discover';
-import { defaultSliders } from '@server/constants/discover';
+import { defaultSliders, DiscoverSliderType } from '@server/constants/discover';
 import { getRepository } from '@server/datasource';
 import logger from '@server/logger';
 import { DbAwareColumn, resolveDbType } from '@server/utils/DbColumnHelper';
@@ -23,11 +22,19 @@ class DiscoverSlider {
       });
 
       if (!existingSlider) {
+        const sliderToCreate = { ...slider };
+        if (slider.type === DiscoverSliderType.MDBLIST_COLLECTIONS) {
+          const maximum = await sliderRepository
+            .createQueryBuilder('slider')
+            .select('MAX(slider.order)', 'max')
+            .getRawOne<{ max: number | null }>();
+          sliderToCreate.order = Number(maximum?.max ?? -1) + 1;
+        }
         logger.info('Creating built-in discovery slider', {
           label: 'Discover Slider',
           slider,
         });
-        await sliderRepository.save(new DiscoverSlider(slider));
+        await sliderRepository.save(new DiscoverSlider(sliderToCreate));
       }
     }
   }

@@ -23,7 +23,7 @@ import { createHash } from 'node:crypto';
 
 export const JUSTWATCH_STREAMING_CHART_SLUG =
   'justwatch-streaming-charts' as const;
-export const MDBLIST_SOURCE_LIMIT = 1000;
+export const MDBLIST_SOURCE_LIMIT = 10_000;
 export const MDBLIST_PAGE_SIZE = 20;
 export const MDBLIST_CACHE_TTL_SECONDS = 3 * 60 * 60;
 export const MDBLIST_STALE_TTL_SECONDS = 24 * 60 * 60;
@@ -59,6 +59,10 @@ interface RankedMovieIdentifier {
 interface PreparedRankedMovie {
   item: MdblistMediaItem;
   movie: MovieResult | TvResult;
+}
+
+export interface PreparedMdblistMovie extends MovieResult {
+  mdblistRank: number;
 }
 
 interface MdblistSourceClient {
@@ -206,6 +210,24 @@ export class MdblistProvider {
       rankedItems,
       user,
     });
+  }
+
+  public async getPreparedCollection({
+    tmdb,
+    language,
+  }: {
+    tmdb: TheMovieDb;
+    language?: string;
+  }): Promise<PreparedMdblistMovie[]> {
+    if (this.mediaType !== 'movie') {
+      return [];
+    }
+
+    const prepared = await this.getPreparedRankedMovies({ tmdb, language });
+    return prepared.map(({ item, movie }) => ({
+      ...(movie as MovieResult),
+      mdblistRank: item.rank,
+    }));
   }
 
   public async getStreamingChartPage({
@@ -500,4 +522,26 @@ export const resetMdblistProviderStateForTests = (): void => {
   normalizedRefreshPromises.clear();
   preparedRefreshPromises.clear();
   cacheManager.getCache('mdblist').flush();
+};
+
+export const invalidateMdblistListCache = (
+  list: MdblistListReference,
+  mediaType: 'movie' | 'tv' = 'movie'
+): void => {
+  const referenceKey = getMdblistReferenceKey(list);
+  const sourceKey = `${referenceKey}:${mediaType}`;
+  const cache = cacheManager.getCache('mdblist').data;
+
+  cache.keys().forEach((key) => {
+    if (key.includes(referenceKey)) {
+      cache.del(key);
+    }
+  });
+  sourceRefreshPromises.delete(sourceKey);
+  [...normalizedRefreshPromises.keys()]
+    .filter((key) => key.includes(referenceKey))
+    .forEach((key) => normalizedRefreshPromises.delete(key));
+  [...preparedRefreshPromises.keys()]
+    .filter((key) => key.includes(referenceKey))
+    .forEach((key) => preparedRefreshPromises.delete(key));
 };

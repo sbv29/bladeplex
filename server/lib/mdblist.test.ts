@@ -14,6 +14,7 @@ import Media from '@server/entity/Media';
 import cacheManager from '@server/lib/cache';
 import {
   MdblistProvider,
+  invalidateMdblistListCache,
   resetMdblistProviderStateForTests,
 } from '@server/lib/mdblist';
 
@@ -259,7 +260,7 @@ describe('MdblistProvider', () => {
     const lastPage = await provider.getStreamingChartPage({ tmdb, page: 3 });
 
     assert.equal(calls, 1);
-    assert.equal(requestedLimit, 1000);
+    assert.equal(requestedLimit, 10_000);
     assert.equal(firstPage.totalResults, 45);
     assert.equal(firstPage.totalPages, 3);
     assert.deepEqual(
@@ -362,6 +363,41 @@ describe('MdblistProvider', () => {
       'official:official-movies',
       'public:scott/weekend',
     ]);
+  });
+
+  it('invalidates only the selected normalized list cache', async () => {
+    let calls = 0;
+    const reference = {
+      type: 'public' as const,
+      username: 'scott',
+      slug: 'weekend',
+    };
+    const client = {
+      getMovieList: async () => {
+        calls += 1;
+        return [sourceMovie(1, calls * 10)];
+      },
+    };
+    const provider = new MdblistProvider({
+      apiKey: 'configured',
+      client,
+      list: reference,
+    });
+
+    assert.deepEqual(
+      (await provider.getSourceItems()).map((item) => item.ids.tmdb),
+      [10]
+    );
+    assert.deepEqual(
+      (await provider.getSourceItems()).map((item) => item.ids.tmdb),
+      [10]
+    );
+    invalidateMdblistListCache(reference);
+    assert.deepEqual(
+      (await provider.getSourceItems()).map((item) => item.ids.tmdb),
+      [20]
+    );
+    assert.equal(calls, 2);
   });
 
   it('keeps known valid TMDb identifiers in source rank order', async () => {

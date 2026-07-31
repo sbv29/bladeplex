@@ -17,10 +17,13 @@ export const bootstrapCustomListSliders = async (): Promise<void> => {
   let nextOrder = Number(maximumOrder?.max ?? -1) + 1;
 
   for (const customList of customLists) {
-    const sliderType =
-      customList.mediaType === 'tv'
-        ? DiscoverSliderType.MDBLIST_CUSTOM_TV
-        : DiscoverSliderType.MDBLIST_CUSTOM_MOVIES;
+    // Movie lists are rendered inside the single MDBList Collections row.
+    // Retain legacy rows in the database for rollback compatibility, but do
+    // not create new per-collection movie sliders.
+    if (customList.mediaType === 'movie') {
+      continue;
+    }
+    const sliderType = DiscoverSliderType.MDBLIST_CUSTOM_TV;
     const existingSlider = await sliderRepository.findOne({
       where: {
         type: sliderType,

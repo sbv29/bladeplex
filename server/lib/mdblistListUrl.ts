@@ -70,7 +70,7 @@ export const parseMdblistListUrl = (input: string): ParsedMdblistListUrl => {
         'Official MDBList URLs must contain /movies/ or /shows/.'
       );
     }
-    const slug = decodeSegment(segments[hasMediaSegment ? 3 : 2]);
+    const slug = decodeSegment(segments[hasMediaSegment ? 3 : 2]).toLowerCase();
     const mediaSegment = hasMediaSegment ? segments[2] : 'movies';
     const apiSlug =
       OFFICIAL_API_SLUG_ALIASES[`${mediaSegment}:${slug}`] ?? slug;
@@ -88,8 +88,8 @@ export const parseMdblistListUrl = (input: string): ParsedMdblistListUrl => {
     );
   }
 
-  const username = decodeSegment(segments[1]);
-  const slug = decodeSegment(segments[2]);
+  const username = decodeSegment(segments[1]).toLowerCase();
+  const slug = decodeSegment(segments[2]).toLowerCase();
   return {
     canonicalUrl: `https://mdblist.com/lists/${username}/${slug}`,
     listType: 'public',

@@ -26,6 +26,7 @@ export enum DiscoverSliderType {
   MDBLIST_JUSTWATCH_STREAMING_CHART_MOVIES,
   MDBLIST_CUSTOM_MOVIES,
   MDBLIST_CUSTOM_TV,
+  MDBLIST_COLLECTIONS,
 }
 
 export const defaultSliders: Partial<DiscoverSlider>[] = [
@@ -112,5 +113,11 @@ export const defaultSliders: Partial<DiscoverSlider>[] = [
     enabled: true,
     isBuiltIn: true,
     order: 13,
+  },
+  {
+    type: DiscoverSliderType.MDBLIST_COLLECTIONS,
+    enabled: true,
+    isBuiltIn: true,
+    order: 14,
   },
 ];

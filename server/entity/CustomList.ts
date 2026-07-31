@@ -17,6 +17,12 @@ export type CustomListProvider = 'mdblist';
   ['provider', 'listType', 'username', 'slug', 'mediaType'],
   { unique: true }
 )
+@Index('IDX_custom_list_collection_order', [
+  'mediaType',
+  'enabled',
+  'sortOrder',
+])
+@Index('IDX_custom_list_mdblist_id', ['mdblistId'])
 class CustomList {
   @PrimaryGeneratedColumn()
   public id: number;
@@ -44,6 +50,28 @@ class CustomList {
 
   @Column({ type: 'int', default: 0 })
   public itemCount: number;
+
+  @Column({ default: true })
+  public enabled: boolean;
+
+  @Column({ type: 'int', default: 0 })
+  public sortOrder: number;
+
+  @Column({ type: 'int', nullable: true })
+  public mdblistId?: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  public selectedArtworkTmdbId?: number | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  public selectedArtworkPosterPath?: string | null;
+
+  @DbAwareColumn({ type: 'datetime', nullable: true })
+  public lastValidatedAt?: Date | null;
+
+  /** Bounded, sanitized JSON metadata supplied by the collection service. */
+  @Column({ type: 'text', nullable: true })
+  public metadata?: string | null;
 
   @DbAwareColumn({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   public createdAt: Date;

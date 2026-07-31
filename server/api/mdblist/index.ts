@@ -11,6 +11,8 @@ import {
 
 const MDBLIST_API_URL = 'https://api.mdblist.com';
 const MDBLIST_REQUEST_TIMEOUT_MS = 10_000;
+const MDBLIST_LIST_PAGE_SIZE = 1000;
+export const MDBLIST_MAX_LIST_ITEMS = 10_000;
 
 class MdblistAPI extends ExternalAPI {
   constructor(apiKey: string) {
@@ -49,19 +51,52 @@ class MdblistAPI extends ExternalAPI {
     reference: MdblistListReference;
     limit?: number;
   }): Promise<MdblistMovieItem[]> {
-    const response = await this.get<unknown>(
-      `${this.getListPath(reference)}/items`,
-      {
-        params: {
-          mediatype: 'movie',
-          limit,
-          sort: 'rank',
-          order: 'asc',
-        },
+    const requestedLimit = Math.min(
+      Math.max(1, Math.floor(limit)),
+      MDBLIST_MAX_LIST_ITEMS
+    );
+    const items: MdblistMovieItem[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    let pagesFetched = 0;
+
+    do {
+      const response = await this.get<unknown>(
+        `${this.getListPath(reference)}/items`,
+        {
+          params: {
+            mediatype: 'movie',
+            limit: Math.min(
+              MDBLIST_LIST_PAGE_SIZE,
+              requestedLimit - items.length
+            ),
+            sort: 'rank',
+            order: 'asc',
+            ...(cursor ? { cursor } : {}),
+          },
+        }
+      );
+      pagesFetched += 1;
+      const page = MdblistListItemsResponseSchema.parse(response);
+      items.push(...page.movies.slice(0, requestedLimit - items.length));
+
+      const nextCursor = page.pagination?.next_cursor ?? undefined;
+      if (
+        items.length >= requestedLimit ||
+        page.pagination?.has_more === false ||
+        !nextCursor ||
+        seenCursors.has(nextCursor)
+      ) {
+        break;
       }
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
+    } while (
+      items.length < requestedLimit &&
+      pagesFetched < Math.ceil(MDBLIST_MAX_LIST_ITEMS / MDBLIST_LIST_PAGE_SIZE)
     );
 
-    return MdblistListItemsResponseSchema.parse(response).movies;
+    return items;
   }
 
   public async getOfficialMovieList({
@@ -84,14 +119,52 @@ class MdblistAPI extends ExternalAPI {
     reference: MdblistListReference;
     limit?: number;
   }): Promise<MdblistShowItem[]> {
-    const response = await this.get<unknown>(
-      `${this.getListPath(reference)}/items`,
-      {
-        params: { mediatype: 'show', limit, sort: 'rank', order: 'asc' },
+    const requestedLimit = Math.min(
+      Math.max(1, Math.floor(limit)),
+      MDBLIST_MAX_LIST_ITEMS
+    );
+    const items: MdblistShowItem[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    let pagesFetched = 0;
+
+    do {
+      const response = await this.get<unknown>(
+        `${this.getListPath(reference)}/items`,
+        {
+          params: {
+            mediatype: 'show',
+            limit: Math.min(
+              MDBLIST_LIST_PAGE_SIZE,
+              requestedLimit - items.length
+            ),
+            sort: 'rank',
+            order: 'asc',
+            ...(cursor ? { cursor } : {}),
+          },
+        }
+      );
+      pagesFetched += 1;
+      const page = MdblistShowListItemsResponseSchema.parse(response);
+      items.push(...page.shows.slice(0, requestedLimit - items.length));
+
+      const nextCursor = page.pagination?.next_cursor ?? undefined;
+      if (
+        items.length >= requestedLimit ||
+        page.pagination?.has_more === false ||
+        !nextCursor ||
+        seenCursors.has(nextCursor)
+      ) {
+        break;
       }
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
+    } while (
+      items.length < requestedLimit &&
+      pagesFetched < Math.ceil(MDBLIST_MAX_LIST_ITEMS / MDBLIST_LIST_PAGE_SIZE)
     );
 
-    return MdblistShowListItemsResponseSchema.parse(response).shows;
+    return items;
   }
 }
 

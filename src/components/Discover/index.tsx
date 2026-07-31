@@ -5,6 +5,7 @@ import PageTitle from '@app/components/Common/PageTitle';
 import Tooltip from '@app/components/Common/Tooltip';
 import CreateSlider from '@app/components/Discover/CreateSlider';
 import DiscoverSliderEdit from '@app/components/Discover/DiscoverSliderEdit';
+import MdblistCollectionSlider from '@app/components/Discover/MdblistCollectionSlider';
 import MovieGenreSlider from '@app/components/Discover/MovieGenreSlider';
 import NetworkSlider from '@app/components/Discover/NetworkSlider';
 import PlexWatchlistSlider from '@app/components/Discover/PlexWatchlistSlider';
@@ -269,18 +270,7 @@ const Discover = () => {
             );
             break;
           case DiscoverSliderType.MDBLIST_CUSTOM_MOVIES:
-            sliderComponent = slider.data ? (
-              <MediaSlider
-                sliderKey={`mdblist-custom-movies-${slider.data}`}
-                title={
-                  slider.title ??
-                  intl.formatMessage(sliderTitles.mdblistCustomMovies)
-                }
-                url={`/api/v1/discover/mdblist/lists/${slider.data}/movies`}
-                linkUrl={`/discover/movies/mdblist/${slider.data}`}
-                hideWhenEmpty
-              />
-            ) : null;
+            sliderComponent = null;
             break;
           case DiscoverSliderType.MDBLIST_CUSTOM_TV:
             sliderComponent = slider.data ? (
@@ -295,6 +285,9 @@ const Discover = () => {
                 hideWhenEmpty
               />
             ) : null;
+            break;
+          case DiscoverSliderType.MDBLIST_COLLECTIONS:
+            sliderComponent = <MdblistCollectionSlider />;
             break;
           case DiscoverSliderType.MOVIE_GENRES:
             sliderComponent = <MovieGenreSlider />;

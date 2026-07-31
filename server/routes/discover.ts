@@ -2,7 +2,7 @@ import PlexTvAPI from '@server/api/plextv';
 import type { SortOptions } from '@server/api/themoviedb';
 import TheMovieDb from '@server/api/themoviedb';
 import type { TmdbKeyword } from '@server/api/themoviedb/interfaces';
-import { MediaType } from '@server/constants/media';
+import { MediaStatus, MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import CustomList from '@server/entity/CustomList';
 import Media from '@server/entity/Media';
@@ -13,7 +13,13 @@ import type {
   WatchlistResponse,
 } from '@server/interfaces/api/discoverInterfaces';
 import { MdblistProvider } from '@server/lib/mdblist';
+import {
+  MdblistCollectionError,
+  MdblistCollectionService,
+  mdblistCollectionSortOptions,
+} from '@server/lib/mdblistCollections';
 import { createMdblistListReference } from '@server/lib/mdblistListUrl';
+import { isServerOwner } from '@server/lib/serverOwner';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { mapProductionCompany } from '@server/models/Movie';
@@ -62,6 +68,106 @@ export const createTmdbWithBlocklistSettings = (): TheMovieDb => {
 };
 
 const discoverRoutes = Router();
+
+const CollectionQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  sortBy: z.enum(mdblistCollectionSortOptions).default('rank'),
+  seed: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .regex(/^[a-zA-Z0-9_-]+$/)
+    .optional(),
+  genre: z.coerce.number().int().positive().optional(),
+  yearGte: z.coerce.number().int().min(1870).max(2200).optional(),
+  yearLte: z.coerce.number().int().min(1870).max(2200).optional(),
+  voteAverageGte: z.coerce.number().min(0).max(10).optional(),
+  mediaStatus: z.coerce
+    .number()
+    .int()
+    .refine((value) =>
+      Object.values(MediaStatus).includes(value as MediaStatus)
+    )
+    .optional(),
+  hideAvailable: z.stringbool().optional(),
+});
+
+discoverRoutes.get('/mdblist/collections', async (_req, res) => {
+  const lists = await getRepository(CustomList).find({
+    where: { provider: 'mdblist', mediaType: 'movie', enabled: true },
+    order: { sortOrder: 'ASC', id: 'ASC' },
+  });
+  return res.json(
+    lists.map((list) => ({
+      id: list.id,
+      title: list.title,
+      itemCount: list.itemCount,
+      selectedArtworkTmdbId: list.selectedArtworkTmdbId,
+      selectedArtworkPosterPath: list.selectedArtworkPosterPath,
+    }))
+  );
+});
+
+discoverRoutes.get('/mdblist/collections/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const list = Number.isSafeInteger(id)
+    ? await getRepository(CustomList).findOne({
+        where: {
+          id,
+          provider: 'mdblist',
+          mediaType: 'movie',
+          ...(isServerOwner(req.user) ? {} : { enabled: true }),
+        },
+      })
+    : null;
+  if (!list)
+    return res.status(404).json({ message: 'MDBList collection not found.' });
+  return res.json({
+    id: list.id,
+    title: list.title,
+    itemCount: list.itemCount,
+    enabled: list.enabled,
+    sourceUrl: list.sourceUrl,
+    lastValidatedAt: list.lastValidatedAt,
+    selectedArtworkTmdbId: list.selectedArtworkTmdbId,
+    selectedArtworkPosterPath: list.selectedArtworkPosterPath,
+  });
+});
+
+discoverRoutes.get('/mdblist/collections/:id/movies', async (req, res) => {
+  const query = CollectionQuerySchema.safeParse(req.query);
+  if (!query.success || (query.data.sortBy === 'random' && !query.data.seed)) {
+    return res.status(400).json({ message: 'Invalid collection query.' });
+  }
+  try {
+    const service = new MdblistCollectionService({
+      tmdb: createTmdbWithRegionLanguage(req.user),
+      language: req.locale,
+    });
+    return res.json(
+      await service.getCollectionPage({
+        id: Number(req.params.id),
+        user: req.user,
+        query: query.data,
+        allowDisabled: isServerOwner(req.user),
+      })
+    );
+  } catch (error) {
+    if (error instanceof MdblistCollectionError && error.code === 'not_found') {
+      return res.status(404).json({ message: error.message });
+    }
+    logger.warn('Unable to prepare an MDBList collection', {
+      label: 'MDBList',
+      collectionId: Number(req.params.id),
+      errorType:
+        error instanceof Error ? error.constructor.name : 'UnknownError',
+    });
+    return res
+      .status(503)
+      .json({ message: 'MDBList collection is temporarily unavailable.' });
+  }
+});
 
 const QueryFilterOptions = z.object({
   page: z.coerce.string().optional(),

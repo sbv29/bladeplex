@@ -29,6 +29,7 @@ import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
 import customListRoutes from '@server/routes/settings/customLists';
 import discoverSettingRoutes from '@server/routes/settings/discover';
+import mdblistCollectionRoutes from '@server/routes/settings/mdblistCollections';
 import { ApiError } from '@server/types/error';
 import { appDataPath } from '@server/utils/appDataVolume';
 import {
@@ -66,6 +67,7 @@ settingsRoutes.use('/radarr', radarrRoutes);
 settingsRoutes.use('/sonarr', sonarrRoutes);
 settingsRoutes.use('/discover', discoverSettingRoutes);
 settingsRoutes.use('/custom-lists', customListRoutes);
+settingsRoutes.use('/mdblist-collections', mdblistCollectionRoutes);
 settingsRoutes.use('/metadatas', metadataRoutes);
 
 const filteredMainSettings = (

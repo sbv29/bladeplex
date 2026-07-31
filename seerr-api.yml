@@ -5830,6 +5830,219 @@ paths:
                             mdblistRank:
                               type: integer
                               minimum: 1
+  /settings/mdblist-collections:
+    get:
+      summary: List owner-managed MDBList collections
+      tags: [settings]
+      responses:
+        '200': { description: Collection manager state }
+        '403': { description: Server owner required }
+    post:
+      summary: Create an MDBList collection
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, maxLength: 500 }
+                title: { type: string, maxLength: 100 }
+      responses:
+        '201': { description: Collection created }
+        '400': { description: Invalid or inaccessible list }
+        '403': { description: Server owner required }
+        '409': { description: Duplicate collection }
+  /settings/mdblist-collections/validate:
+    post:
+      summary: Validate an MDBList movie-list URL
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, maxLength: 500 }
+                title: { type: string, maxLength: 100 }
+      responses:
+        '200': { description: Sanitized validation preview }
+        '400': { description: Invalid or inaccessible list }
+        '403': { description: Server owner required }
+        '429': { description: Too many validation attempts }
+  /settings/mdblist-collections/reorder:
+    put:
+      summary: Reorder MDBList collections
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  maxItems: 100
+                  items: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Reordered collections }
+        '400': { description: Invalid order }
+        '403': { description: Server owner required }
+  /settings/mdblist-collections/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    put:
+      summary: Update an MDBList collection
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string, maxLength: 500 }
+                title: { type: string, maxLength: 100 }
+      responses:
+        '200': { description: Updated collection }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+    delete:
+      summary: Delete an MDBList collection
+      tags: [settings]
+      responses:
+        '204': { description: Collection deleted }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+  /settings/mdblist-collections/{id}/enabled:
+    put:
+      summary: Enable or disable an MDBList collection
+      tags: [settings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        '200': { description: Updated collection }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+  /settings/mdblist-collections/{id}/shuffle-artwork:
+    post:
+      summary: Select different persisted collection artwork
+      tags: [settings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Updated collection }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+  /settings/mdblist-collections/{id}/refresh:
+    post:
+      summary: Revalidate and refresh an MDBList collection
+      tags: [settings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Refreshed collection }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+  /discover/mdblist/collections:
+    get:
+      summary: List enabled MDBList collection tiles
+      tags: [search]
+      responses:
+        '200': { description: Enabled collections in configured order }
+  /discover/mdblist/collections/{id}:
+    get:
+      summary: Get safe MDBList collection metadata
+      tags: [search]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Safe collection metadata }
+        '404': { description: Collection not found }
+  /discover/mdblist/collections/{id}/movies:
+    get:
+      summary: Get normalized and locally paginated collection movies
+      tags: [search]
+      parameters:
+        - {
+            in: path,
+            name: id,
+            required: true,
+            schema: { type: integer, minimum: 1 },
+          }
+        - {
+            in: query,
+            name: page,
+            schema: { type: integer, minimum: 1, default: 1 },
+          }
+        - {
+            in: query,
+            name: sortBy,
+            schema:
+              {
+                type: string,
+                enum:
+                  [
+                    rank,
+                    random,
+                    release_date.desc,
+                    release_date.asc,
+                    title.asc,
+                    title.desc,
+                    rating.desc,
+                    popularity.desc,
+                  ],
+              },
+          }
+        - { in: query, name: seed, schema: { type: string, maxLength: 64 } }
+        - { in: query, name: genre, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: yearGte, schema: { type: integer } }
+        - { in: query, name: yearLte, schema: { type: integer } }
+        - {
+            in: query,
+            name: voteAverageGte,
+            schema: { type: number, minimum: 0, maximum: 10 },
+          }
+        - { in: query, name: mediaStatus, schema: { type: integer } }
+        - { in: query, name: hideAvailable, schema: { type: boolean } }
+      responses:
+        '200':
+          {
+            description: Native movie results after local filtering and sorting,
+          }
+        '400': { description: Invalid query }
+        '404': { description: Collection not found }
+        '503': { description: Collection temporarily unavailable }
   /discover/mdblist/lists/{listId}/movies:
     get:
       summary: Get a configured MDBList custom movie list

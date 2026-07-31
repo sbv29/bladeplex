@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import { AddCustomLists1785370000000 } from '@server/migration/sqlite/1785370000000-AddCustomLists';
 import { AddTvCustomLists1785450000000 } from '@server/migration/sqlite/1785450000000-AddTvCustomLists';
+import { AddMdblistCollectionFields1785540000000 } from '@server/migration/sqlite/1785540000000-AddMdblistCollectionFields';
 import { DataSource } from 'typeorm';
 
 describe('custom list migration', () => {
@@ -62,6 +63,84 @@ describe('custom list migration', () => {
         await queryRunner.query(`SELECT "mediaType" FROM "custom_list"`),
         [{ mediaType: 'movie' }]
       );
+    } finally {
+      await queryRunner.release();
+      await dataSource.destroy();
+    }
+  });
+
+  it('adds collection fields and migrates movie slider state only', async () => {
+    const dataSource = new DataSource({ type: 'sqlite', database: ':memory:' });
+    await dataSource.initialize();
+    const queryRunner = dataSource.createQueryRunner();
+    const initial = new AddCustomLists1785370000000();
+    const tv = new AddTvCustomLists1785450000000();
+    const collections = new AddMdblistCollectionFields1785540000000();
+
+    try {
+      await initial.up(queryRunner);
+      await tv.up(queryRunner);
+      await queryRunner.query(
+        `CREATE TABLE "discover_slider" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "type" integer NOT NULL, "order" integer NOT NULL, "isBuiltIn" boolean NOT NULL DEFAULT (0), "enabled" boolean NOT NULL DEFAULT (1), "title" varchar, "data" varchar)`
+      );
+      await queryRunner.query(
+        `INSERT INTO "custom_list" ("provider", "listType", "title", "sourceUrl", "username", "slug", "mediaType") VALUES
+          ('mdblist', 'public', 'Second Movie', 'https://mdblist.com/lists/test/second', 'test', 'second', 'movie'),
+          ('mdblist', 'public', 'First Movie', 'https://mdblist.com/lists/test/first', 'test', 'first', 'movie'),
+          ('mdblist', 'public', 'Unlinked Movie', 'https://mdblist.com/lists/test/unlinked', 'test', 'unlinked', 'movie'),
+          ('mdblist', 'public', 'TV List', 'https://mdblist.com/lists/test/tv', 'test', 'tv', 'tv')`
+      );
+      await queryRunner.query(
+        `INSERT INTO "discover_slider" ("type", "order", "enabled", "data") VALUES
+          (25, 12, 0, '1'),
+          (25, 4, 1, '2'),
+          (26, 2, 0, '4')`
+      );
+
+      await collections.up(queryRunner);
+
+      assert.deepEqual(
+        await queryRunner.query(
+          `SELECT "id", "mediaType", "enabled", "sortOrder" FROM "custom_list" ORDER BY "id"`
+        ),
+        [
+          { id: 1, mediaType: 'movie', enabled: 0, sortOrder: 12 },
+          { id: 2, mediaType: 'movie', enabled: 1, sortOrder: 4 },
+          { id: 3, mediaType: 'movie', enabled: 1, sortOrder: 1000003 },
+          { id: 4, mediaType: 'tv', enabled: 1, sortOrder: 0 },
+        ]
+      );
+      assert.equal(
+        (
+          await queryRunner.query(
+            `SELECT COUNT(*) AS "count" FROM "discover_slider"`
+          )
+        )[0].count,
+        4
+      );
+      assert.deepEqual(
+        await queryRunner.query(
+          `SELECT "type", "order", "enabled" FROM "discover_slider" WHERE "type" = 27`
+        ),
+        [{ type: 27, order: 13, enabled: 1 }]
+      );
+
+      const table = await queryRunner.getTable('custom_list');
+      assert.ok(
+        table?.indices.some(
+          (index) => index.name === 'IDX_custom_list_collection_order'
+        )
+      );
+      assert.ok(
+        table?.indices.some(
+          (index) => index.name === 'IDX_custom_list_mdblist_id'
+        )
+      );
+
+      await collections.down(queryRunner);
+      const reverted = await queryRunner.getTable('custom_list');
+      assert.equal(reverted?.findColumnByName('enabled'), undefined);
+      assert.equal(reverted?.findColumnByName('sortOrder'), undefined);
     } finally {
       await queryRunner.release();
       await dataSource.destroy();

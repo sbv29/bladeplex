@@ -2,6 +2,7 @@ import PageTitle from '@app/components/Common/PageTitle';
 import type { SettingsRoute } from '@app/components/Common/SettingsTabs';
 import SettingsTabs from '@app/components/Common/SettingsTabs';
 import useSettings from '@app/hooks/useSettings';
+import { useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
 import { MediaServerType } from '@server/constants/server';
@@ -20,6 +21,7 @@ const messages = defineMessages('components.Settings', {
   menuAbout: 'About',
   menuMetadataProviders: 'Metadata Providers',
   menuCustomLists: 'Custom Lists',
+  menuMdblistCollections: 'MDBList Collections',
 });
 
 type SettingsLayoutProps = {
@@ -29,6 +31,7 @@ type SettingsLayoutProps = {
 const SettingsLayout = ({ children }: SettingsLayoutProps) => {
   const intl = useIntl();
   const settings = useSettings();
+  const { user } = useUser();
   const settingsRoutes: SettingsRoute[] = [
     {
       text: intl.formatMessage(messages.menuGeneralSettings),
@@ -71,6 +74,15 @@ const SettingsLayout = ({ children }: SettingsLayoutProps) => {
       route: '/settings/custom-lists',
       regex: /^\/settings\/custom-lists/,
     },
+    ...(user?.id === 1
+      ? [
+          {
+            text: intl.formatMessage(messages.menuMdblistCollections),
+            route: '/settings/mdblist-collections',
+            regex: /^\/settings\/mdblist-collections/,
+          },
+        ]
+      : []),
     {
       text: intl.formatMessage(messages.menuNotifications),
       route: '/settings/notifications/email',
