@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.local
     ports:
-      - '5055:5055'
+      - '127.0.0.1:5055:5055'
     environment:
       DB_TYPE: 'postgres' # Which DB engine to use. The default is "sqlite". To use postgres, this needs to be set to "postgres"
       DB_HOST: 'postgres' # The host (url) of the database

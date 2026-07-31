@@ -54,6 +54,13 @@ Production must be deployed from a clean `main` branch:
 ./scripts/deploy-prod.sh
 ```
 
+[`docker-compose.yml`](./docker-compose.yml) is the canonical production
+Compose file. Production, beta, and production rollback scripts always select
+it explicitly with `docker compose -f`; they never rely on Compose automatic
+file discovery. `compose.dev.yaml` is the bind-mounted local development stack,
+and `compose.postgres.yaml` is the separate local PostgreSQL development stack.
+Neither development file is a production deployment path.
+
 The script fetches `origin/main` and refuses to deploy if local `main` is
 behind or has diverged. Use `./scripts/deploy-prod.sh --skip-fetch` only when
 the remote is intentionally unavailable and the local remote-tracking ref is
@@ -63,7 +70,7 @@ Production uses:
 
 - container `bladeplex`
 - image `bladeplex:latest`
-- port `5055:5055`
+- port `127.0.0.1:5055:5055`
 - configuration `/opt/stacks/seerr/config:/app/config`
 - restart policy `unless-stopped`
 
@@ -143,16 +150,13 @@ Roll back to a specific image:
 ./scripts/rollback-prod.sh bladeplex:rollback-YYYYMMDDTHHMMSSZ
 ```
 
-With no image argument, the script selects the most recent matching rollback
-tag and asks for confirmation:
-
-```bash
-./scripts/rollback-prod.sh
-```
-
-For non-interactive use, add `--yes`. The rollback script preserves the image
-being replaced with a `bladeplex:pre-rollback-<UTC timestamp>` tag. It replaces
-only the production container and never deletes `/opt/stacks/seerr/config`.
+The rollback image is required; the script never guesses from the available
+tags. Before production is touched, it resolves the supplied tag to an immutable
+local image ID and verifies that the image `COMMIT_TAG` matches its parsed
+`committag.json`. For non-interactive use, add `--yes`. The rollback script
+preserves the image being replaced with a
+`bladeplex:pre-rollback-<UTC timestamp>` tag. It replaces only the production
+container and never deletes `/opt/stacks/seerr/config`.
 
 ## Cloudflare tunnel
 

@@ -9,7 +9,7 @@ services:
       args:
         COMMIT_TAG: ${COMMIT_TAG}
     ports:
-      - '${BLADEPLEX_HOST_PORT:-5055}:5055'
+      - '127.0.0.1:${BLADEPLEX_HOST_PORT:-5055}:5055'
     volumes:
       - '${BLADEPLEX_CONFIG_PATH:-/opt/stacks/seerr/config}:/app/config'
     environment:

@@ -30,7 +30,7 @@ docker run -d \
   --name seerr \
   -e NODE_EXTRA_CA_CERTS=/certs/my-ca.pem \
   -v /path/to/my-ca.pem:/certs/my-ca.pem:ro \
-  -p 5055:5055 \
+  -p 127.0.0.1:5055:5055 \
   ghcr.io/seerr-team/seerr:latest
 ```
 
@@ -46,7 +46,7 @@ services:
     volumes:
       - /path/to/my-ca.pem:/certs/my-ca.pem:ro
     ports:
-      - 5055:5055
+      - 127.0.0.1:5055:5055
 ```
 
 </TabItem>

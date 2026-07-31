@@ -19,7 +19,7 @@ config/*.json
 cypress
 dist
 Dockerfile*
-compose.yaml
+compose.dev.yaml
 gen-docs
 docs
 LICENSE

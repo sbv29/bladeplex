@@ -80,7 +80,7 @@ Summary of changes :
         - TZ=Asia/Tashkent
         - PORT=5055 #optional
       ports:
-        - 5055:5055
+        - 127.0.0.1:5055:5055
       volumes:
         - /path/to/appdata/config:/app/config
       healthcheck:
@@ -100,7 +100,7 @@ Summary of changes :
     -e LOG_LEVEL=debug \
     -e TZ=Asia/Tashkent \
     -e PORT=5055 \
-    -p 5055:5055 \
+    -p 127.0.0.1:5055:5055 \
     -v /path/to/appdata/config:/app/config \
     --restart unless-stopped \
     ghcr.io/seerr-team/seerr:latest
@@ -124,7 +124,7 @@ Summary of changes :
         - LOG_LEVEL=debug
         - TZ=Asia/Tashkent
       ports:
-        - 5055:5055
+        - 127.0.0.1:5055:5055
       volumes:
         - seerr-data:/app/config
       healthcheck:
@@ -148,7 +148,7 @@ Summary of changes :
     -e LOG_LEVEL=debug `
     -e TZ=Asia/Tashkent `
     -e PORT=5055 `
-    -p 5055:5055 `
+    -p 127.0.0.1:5055:5055 `
     -v seerr-data:/app/config `
     --restart unless-stopped `
     ghcr.io/seerr-team/seerr:latest
@@ -163,7 +163,7 @@ Summary of changes :
     -e LOG_LEVEL=debug ^
     -e TZ=Asia/Tashkent ^
     -e PORT=5055 ^
-    -p 5055:5055 ^
+    -p 127.0.0.1:5055:5055 ^
     -v seerr-data:/app/config ^
     --restart unless-stopped ^
     ghcr.io/seerr-team/seerr:latest

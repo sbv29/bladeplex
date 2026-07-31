@@ -58,10 +58,10 @@ To build this repository with Docker Compose:
 ```bash
 git clone https://github.com/sbv29/bladeplex.git
 cd bladeplex
-docker compose up --detach --build
+docker compose -f docker-compose.yml up --detach --build
 ```
 
-BladePlex is then available at [http://localhost:5055](http://localhost:5055) by default. Persistent application data is stored through the `config` mount defined in [`docker-compose.yml`](./docker-compose.yml); review that file before deploying to production.
+BladePlex is then available at [http://localhost:5055](http://localhost:5055) by default. [`docker-compose.yml`](./docker-compose.yml) is the canonical production definition and stores persistent application data through its `config` mount. Development Compose files must be selected explicitly and are not production deployment paths.
 
 ## Preview
 

@@ -39,7 +39,7 @@ docs export-ignore
 
 .editorconfig export-ignore
 Dockerfile.local export-ignore
-compose.yaml export-ignore
+compose.dev.yaml export-ignore
 stylelint.config.js export-ignore
 
 public/os_logo_filled.png export-ignore

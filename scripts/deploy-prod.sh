@@ -9,12 +9,14 @@ readonly CONTAINER_NAME="bladeplex"
 readonly IMAGE_NAME="bladeplex:latest"
 readonly CONFIG_PATH="/opt/stacks/seerr/config"
 readonly HTTP_URL="http://127.0.0.1:5055"
+readonly PRODUCTION_PORT_BINDING="127.0.0.1:5055:5055"
 readonly EXISTING_ROLLBACK_CONTAINER="bladeplex-old"
 
 skip_fetch=false
 allow_existing_rollback=false
 deployment_started=false
 rollback_image=""
+rollback_tag=""
 
 log() {
   printf '[bladeplex deploy] %s\n' "$*"
@@ -38,8 +40,18 @@ container_exists() {
   docker container inspect "$1" >/dev/null 2>&1
 }
 
+compose_production() {
+  COMMIT_TAG="${commit_tag:-}" \
+  BLADEPLEX_PROJECT_NAME="bladeplex" \
+  BLADEPLEX_CONTAINER_NAME="${CONTAINER_NAME}" \
+  BLADEPLEX_IMAGE="${IMAGE_NAME}" \
+  BLADEPLEX_HOST_PORT="5055" \
+  BLADEPLEX_CONFIG_PATH="${CONFIG_PATH}" \
+    docker compose -f "${COMPOSE_FILE}" -p bladeplex "$@"
+}
+
 select_existing_rollback() {
-  local existing_image container_tag image_tag
+  local existing_image existing_image_id container_tag image_tag
 
   if ! container_exists "${EXISTING_ROLLBACK_CONTAINER}"; then
     warn "Existing rollback container '${EXISTING_ROLLBACK_CONTAINER}' was not found."
@@ -52,6 +64,8 @@ select_existing_rollback() {
     warn "Image ${existing_image} for ${EXISTING_ROLLBACK_CONTAINER} cannot be inspected."
     return 1
   fi
+  existing_image_id="$(docker image inspect "${existing_image}" --format '{{.Id}}')" ||
+    return 1
 
   container_tag="$(docker inspect "${EXISTING_ROLLBACK_CONTAINER}" \
     --format '{{range .Config.Env}}{{println .}}{{end}}' |
@@ -65,7 +79,7 @@ select_existing_rollback() {
   fi
 
   log "Existing rollback container ${EXISTING_ROLLBACK_CONTAINER} has COMMIT_TAG=${container_tag}."
-  rollback_image="${existing_image}"
+  rollback_image="${existing_image_id}"
 }
 
 wait_for_http() {
@@ -82,6 +96,22 @@ wait_for_http() {
   done
 
   return 1
+}
+
+validate_production_port_binding() {
+  local resolved_config
+
+  [[ "${PRODUCTION_PORT_BINDING}" == "127.0.0.1:5055:5055" ]] ||
+    die "Production port binding must be 127.0.0.1:5055:5055."
+
+  resolved_config="$(compose_production config)" ||
+    die "Unable to resolve the production Compose configuration."
+  grep -Eq '^[[:space:]]+host_ip: 127\.0\.0\.1$' <<<"${resolved_config}" ||
+    die "Resolved Compose configuration does not bind production port 5055 to 127.0.0.1."
+  grep -Eq '^[[:space:]]+target: 5055$' <<<"${resolved_config}" ||
+    die "Resolved Compose configuration does not target container port 5055."
+  grep -Eq '^[[:space:]]+published: "5055"$' <<<"${resolved_config}" ||
+    die "Resolved Compose configuration does not publish host port 5055."
 }
 
 validate_image_metadata() {
@@ -136,12 +166,13 @@ attempt_rollback() {
     docker rm "${CONTAINER_NAME}" >/dev/null 2>&1
   fi
 
-  if docker run -d \
-    --name "${CONTAINER_NAME}" \
-    --restart unless-stopped \
-    -p 5055:5055 \
-    -v "${CONFIG_PATH}:/app/config" \
-    "${rollback_image}" >/dev/null && wait_for_http; then
+  if COMMIT_TAG="" BLADEPLEX_PROJECT_NAME="bladeplex" \
+    BLADEPLEX_CONTAINER_NAME="${CONTAINER_NAME}" \
+    BLADEPLEX_IMAGE="${rollback_image}" BLADEPLEX_HOST_PORT="5055" \
+    BLADEPLEX_CONFIG_PATH="${CONFIG_PATH}" \
+    docker compose -f "${COMPOSE_FILE}" -p bladeplex up \
+    --detach --no-build --no-deps --pull never --force-recreate bladeplex >/dev/null &&
+    wait_for_http; then
     warn "Rollback succeeded. Production is running ${rollback_image}."
   else
     warn "Automatic rollback failed. Inspect with: docker logs ${CONTAINER_NAME}"
@@ -178,6 +209,7 @@ command -v docker >/dev/null 2>&1 || die "Docker is not installed."
 command -v curl >/dev/null 2>&1 || die "curl is not installed."
 docker compose version >/dev/null 2>&1 || die "Docker Compose v2 is not available."
 docker info >/dev/null 2>&1 || die "The Docker daemon is unavailable."
+validate_production_port_binding
 
 [[ "$(git branch --show-current)" == "main" ]] || die "Production deployments require branch 'main'."
 [[ -z "$(git status --porcelain)" ]] || die "The Git working tree must be clean."
@@ -199,7 +231,7 @@ commit_tag="${short_hash}-main"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 
 log "Building ${IMAGE_NAME} from ${full_hash} with COMMIT_TAG=${commit_tag}."
-COMMIT_TAG="${commit_tag}" docker compose -f "${COMPOSE_FILE}" build bladeplex
+compose_production build bladeplex
 validate_image_metadata "${IMAGE_NAME}" "${commit_tag}"
 
 if container_exists "${EXISTING_ROLLBACK_CONTAINER}"; then
@@ -209,29 +241,32 @@ fi
 if container_exists "${CONTAINER_NAME}"; then
   rollback_preserved=false
   current_image_id="$(docker inspect --format '{{.Image}}' "${CONTAINER_NAME}")"
-  rollback_image="bladeplex:rollback-${timestamp}"
-  if docker image inspect "${rollback_image}" >/dev/null 2>&1; then
-    die "Rollback tag ${rollback_image} already exists; refusing to overwrite it."
+  rollback_tag="bladeplex:rollback-${timestamp}"
+  if docker image inspect "${rollback_tag}" >/dev/null 2>&1; then
+    die "Rollback tag ${rollback_tag} already exists; refusing to overwrite it."
   fi
 
   if docker image inspect "${current_image_id}" >/dev/null 2>&1; then
-    if docker image tag "${current_image_id}" "${rollback_image}" &&
-      docker image inspect "${rollback_image}" >/dev/null 2>&1; then
+    if docker image tag "${current_image_id}" "${rollback_tag}" &&
+      tagged_image_id="$(docker image inspect "${rollback_tag}" --format '{{.Id}}')" &&
+      [[ "${tagged_image_id}" == "${current_image_id}" ]]; then
       rollback_preserved=true
-      log "Preserved the current production image as ${rollback_image}."
+      rollback_image="${current_image_id}"
+      log "Preserved the current production image as ${rollback_tag} (${rollback_image})."
     fi
   else
     warn "The running container image ${current_image_id} is no longer available in Docker's image store."
-    if docker commit "${CONTAINER_NAME}" "${rollback_image}" >/dev/null &&
-      docker image inspect "${rollback_image}" >/dev/null 2>&1; then
+    if docker commit "${CONTAINER_NAME}" "${rollback_tag}" >/dev/null &&
+      rollback_image="$(docker image inspect "${rollback_tag}" --format '{{.Id}}')"; then
       rollback_preserved=true
-      log "Created rollback image ${rollback_image} from the running ${CONTAINER_NAME} container."
+      log "Created rollback image ${rollback_tag} (${rollback_image}) from the running ${CONTAINER_NAME} container."
     fi
   fi
 
   if [[ "${rollback_preserved}" != true ]]; then
     warn "The current production container could not be preserved as a rollback image."
     rollback_image=""
+    rollback_tag=""
     select_existing_rollback ||
       die "Rollback preservation failed and no valid existing rollback is available."
 
@@ -252,8 +287,8 @@ if container_exists "${CONTAINER_NAME}"; then
 fi
 
 log "Starting production with Docker Compose."
-COMMIT_TAG="${commit_tag}" docker compose -f "${COMPOSE_FILE}" up \
-  --detach --no-build --force-recreate bladeplex
+compose_production up \
+  --detach --no-build --pull never --force-recreate bladeplex
 
 validate_deployment "${commit_tag}"
 deployment_started=false
@@ -264,4 +299,5 @@ printf '  COMMIT_TAG:   %s\n' "${commit_tag}"
 printf '  Image:        %s\n' "${IMAGE_NAME}"
 printf '  Container:    %s\n' "${CONTAINER_NAME}"
 printf '  URL:          %s\n' "${HTTP_URL}"
-printf '  Rollback:     %s\n' "${rollback_image:-not available}"
+printf '  Rollback tag: %s\n' "${rollback_tag:-not available}"
+printf '  Rollback ID:  %s\n' "${rollback_image:-not available}"

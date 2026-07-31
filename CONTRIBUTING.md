@@ -158,7 +158,7 @@ Please be respectful to maintainers and disclose AI assistance.
    pnpm dev
    ```
 
-   - Alternatively, you can use [Docker](https://www.docker.com/) with `docker compose up -d`. This method does not require installing NodeJS or Yarn on your machine directly.
+   - Alternatively, you can use [Docker](https://www.docker.com/) with `docker compose -f compose.dev.yaml up -d`. This method does not require installing NodeJS or Yarn on your machine directly.
 
 5. Create your patch and test your changes.
 
