@@ -1,8 +1,10 @@
+
+
 <p align="center">
   <img src="./public/BLADE30.svg" alt="BladePlex" width="180">
 </p>
 
-<h1 align="center">BladePlex</h1>
+<h1 align="center">BladePlex v3.0</h1>
 
 <p align="center">
   A personalized media request and discovery experience built on
@@ -64,8 +66,14 @@ docker compose -f docker-compose.yml up --detach --build
 BladePlex is then available at [http://localhost:5055](http://localhost:5055) by default. [`docker-compose.yml`](./docker-compose.yml) is the canonical production definition and stores persistent application data through its `config` mount. Development Compose files must be selected explicitly and are not production deployment paths.
 
 ## Preview
+BladePlex (new):
+<img width="1694" height="784" alt="image" src="https://github.com/user-attachments/assets/8e45262f-2f3b-418c-964b-6906c867883b" />
 
+
+Seerr (original):
 <img src="./public/preview.jpg" alt="BladePlex application preview" />
+
+
 
 ## Migrating from Overseerr/Jellyseerr to BladePlex
 
