@@ -3,13 +3,14 @@ import Header from '@app/components/Common/Header';
 import ListView from '@app/components/Common/ListView';
 import PageTitle from '@app/components/Common/PageTitle';
 import useDiscover from '@app/hooks/useDiscover';
-import { useBatchUpdateQueryParams } from '@app/hooks/useUpdateQueryParams';
+import { mergeQueryString } from '@app/hooks/useUpdateQueryParams';
 import ErrorPage from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import { ArrowPathRoundedSquareIcon } from '@heroicons/react/24/solid';
 import type { MovieResult } from '@server/models/Search';
 import axios from 'axios';
 import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 
 const messages = defineMessages('components.Discover.CustomMdblistMovies', {
@@ -45,7 +46,20 @@ const CustomMdblistMovies = ({
 }) => {
   const intl = useIntl();
   const router = useRouter();
-  const updateQuery = useBatchUpdateQueryParams({});
+  const [isShuffleCompact, setIsShuffleCompact] = useState(false);
+
+  useEffect(() => {
+    if (!collection) return;
+
+    const updateShuffleButton = () => {
+      setIsShuffleCompact(window.scrollY > 160);
+    };
+
+    updateShuffleButton();
+    window.addEventListener('scroll', updateShuffleButton, { passive: true });
+    return () => window.removeEventListener('scroll', updateShuffleButton);
+  }, [collection]);
+
   const sortBy =
     typeof router.query.sortBy === 'string' &&
     allowedSorts.has(router.query.sortBy)
@@ -83,10 +97,18 @@ const CustomMdblistMovies = ({
         }
       />
     );
+  const updateQueryWithoutScroll = (
+    query: Record<string, string | undefined>
+  ) => {
+    const newRoute = mergeQueryString(router, query);
+    if (newRoute.path !== router.asPath) {
+      void router.replace(newRoute.pathname, newRoute.path, { scroll: false });
+    }
+  };
   const shuffle = () => {
     const bytes = new Uint32Array(2);
     window.crypto.getRandomValues(bytes);
-    updateQuery({
+    updateQueryWithoutScroll({
       sortBy: 'random',
       seed: `${bytes[0].toString(36)}${bytes[1].toString(36)}`,
     });
@@ -95,7 +117,7 @@ const CustomMdblistMovies = ({
     if (value === 'random') {
       shuffle();
     } else {
-      updateQuery({ sortBy: value, seed: undefined });
+      updateQueryWithoutScroll({ sortBy: value, seed: undefined });
     }
   };
   return (
@@ -140,9 +162,21 @@ const CustomMdblistMovies = ({
                 {intl.formatMessage(messages.popularity)}
               </option>
             </select>
-            <Button buttonType="primary" onClick={shuffle}>
+            <Button
+              buttonType="primary"
+              onClick={shuffle}
+              aria-label={intl.formatMessage(messages.shuffle)}
+              title={intl.formatMessage(messages.shuffle)}
+              className={
+                isShuffleCompact
+                  ? 'absolute-bottom-shift fixed right-6 z-50 h-10 w-10 rounded-full p-0 shadow-lg transition-all duration-200 sm:bottom-8'
+                  : 'transition-all duration-200'
+              }
+            >
               <ArrowPathRoundedSquareIcon />
-              <span>{intl.formatMessage(messages.shuffle)}</span>
+              {!isShuffleCompact && (
+                <span>{intl.formatMessage(messages.shuffle)}</span>
+              )}
             </Button>
           </div>
         )}
