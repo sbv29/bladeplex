@@ -9,7 +9,13 @@ const MdblistIdsSchema = z.object({
 
 export const MdblistMovieItemSchema = z.object({
   id: z.number().int().optional(),
-  rank: z.number().int().positive(),
+  rank: z
+    .number()
+    .int()
+    .positive()
+    .nullable()
+    .optional()
+    .transform((rank) => rank ?? 0),
   adult: z.number().int().optional().default(0),
   title: z.string().optional(),
   imdb_id: z.string().nullable().optional(),
@@ -20,8 +26,14 @@ export const MdblistMovieItemSchema = z.object({
 
 export const MdblistShowItemSchema = z
   .object({
-    id: z.number().int().positive().optional(),
-    rank: z.coerce.number().int().positive().catch(1),
+    id: z.number().int().positive().nullable().optional(),
+    rank: z.coerce
+      .number()
+      .int()
+      .positive()
+      .nullable()
+      .optional()
+      .transform((rank) => rank ?? 0),
     adult: z.number().int().optional().default(0),
     title: z.string().optional(),
     imdb_id: z.string().nullable().optional(),
@@ -36,7 +48,7 @@ export const MdblistShowItemSchema = z
       ...show.ids,
       // The documented TV response commonly exposes TMDb as top-level `id`
       // and TVDb as `tvdb_id`, without the nested movie-style `ids` object.
-      tmdb: show.ids?.tmdb ?? show.id,
+      tmdb: show.ids?.tmdb ?? show.id ?? undefined,
       imdb: show.ids?.imdb ?? show.imdb_id,
       tvdb: show.ids?.tvdb ?? show.tvdb_id,
     },

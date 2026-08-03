@@ -18,6 +18,7 @@ import {
   MdblistCollectionService,
   mdblistCollectionSortOptions,
 } from '@server/lib/mdblistCollections';
+import { mdblistCollectionWarmer } from '@server/lib/mdblistCollectionWarmer';
 import { createMdblistListReference } from '@server/lib/mdblistListUrl';
 import { isServerOwner } from '@server/lib/serverOwner';
 import { getSettings } from '@server/lib/settings';
@@ -93,10 +94,14 @@ const CollectionQuerySchema = z.object({
   hideAvailable: z.stringbool().optional(),
 });
 
-discoverRoutes.get('/mdblist/collections', async (_req, res) => {
+discoverRoutes.get('/mdblist/collections', async (req, res) => {
   const lists = await getRepository(CustomList).find({
     where: { provider: 'mdblist', isCollection: true, enabled: true },
     order: { mediaType: 'ASC', sortOrder: 'ASC', id: 'ASC' },
+  });
+  mdblistCollectionWarmer.enqueue(lists, {
+    tmdb: createTmdbWithRegionLanguage(req.user),
+    language: req.locale,
   });
   return res.json(
     lists.map((list) => ({
