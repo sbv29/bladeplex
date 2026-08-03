@@ -106,12 +106,4 @@ Our [Code of Conduct](./CODE_OF_CONDUCT.md) applies to project participation.
 
 Contributions are welcome. Read the [Contribution Guide](./CONTRIBUTING.md), open an issue for larger changes, and submit a focused pull request against this repository.
 
-## BladePlex Contributors ✨
-
-Thank you to everyone who has contributed directly to BladePlex.
-
-<a href="https://github.com/sbv29/bladeplex/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=sbv29/bladeplex" alt="BladePlex contributors">
-</a>
-
 BladePlex is built on [Seerr](https://github.com/seerr-team/seerr), whose contributors—and the Overseerr and Jellyseerr communities before them—made this project possible.
