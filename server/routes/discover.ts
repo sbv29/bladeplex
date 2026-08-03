@@ -2,8 +2,9 @@ import PlexTvAPI from '@server/api/plextv';
 import type { SortOptions } from '@server/api/themoviedb';
 import TheMovieDb from '@server/api/themoviedb';
 import type { TmdbKeyword } from '@server/api/themoviedb/interfaces';
-import { MediaType } from '@server/constants/media';
+import { MediaStatus, MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
+import CustomList from '@server/entity/CustomList';
 import Media from '@server/entity/Media';
 import { User } from '@server/entity/User';
 import { Watchlist } from '@server/entity/Watchlist';
@@ -11,6 +12,15 @@ import type {
   GenreSliderItem,
   WatchlistResponse,
 } from '@server/interfaces/api/discoverInterfaces';
+import { MdblistProvider } from '@server/lib/mdblist';
+import {
+  MdblistCollectionError,
+  MdblistCollectionService,
+  mdblistCollectionSortOptions,
+} from '@server/lib/mdblistCollections';
+import { mdblistCollectionWarmer } from '@server/lib/mdblistCollectionWarmer';
+import { createMdblistListReference } from '@server/lib/mdblistListUrl';
+import { isServerOwner } from '@server/lib/serverOwner';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { mapProductionCompany } from '@server/models/Movie';
@@ -60,6 +70,156 @@ export const createTmdbWithBlocklistSettings = (): TheMovieDb => {
 
 const discoverRoutes = Router();
 
+const CollectionQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  sortBy: z.enum(mdblistCollectionSortOptions).default('rank'),
+  seed: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .regex(/^[a-zA-Z0-9_-]+$/)
+    .optional(),
+  genre: z.coerce.number().int().positive().optional(),
+  yearGte: z.coerce.number().int().min(1870).max(2200).optional(),
+  yearLte: z.coerce.number().int().min(1870).max(2200).optional(),
+  voteAverageGte: z.coerce.number().min(0).max(10).optional(),
+  mediaStatus: z.coerce
+    .number()
+    .int()
+    .refine((value) =>
+      Object.values(MediaStatus).includes(value as MediaStatus)
+    )
+    .optional(),
+  hideAvailable: z.stringbool().optional(),
+});
+
+discoverRoutes.get('/mdblist/collections', async (req, res) => {
+  const lists = await getRepository(CustomList).find({
+    where: { provider: 'mdblist', isCollection: true, enabled: true },
+    order: { mediaType: 'ASC', sortOrder: 'ASC', id: 'ASC' },
+  });
+  mdblistCollectionWarmer.enqueue(lists, {
+    tmdb: createTmdbWithRegionLanguage(req.user),
+    language: req.locale,
+  });
+  return res.json(
+    lists.map((list) => ({
+      id: list.id,
+      title: list.title,
+      itemCount: list.itemCount,
+      mediaType: list.mediaType,
+      selectedArtworkTmdbId: list.selectedArtworkTmdbId,
+      selectedArtworkPosterPath: list.selectedArtworkPosterPath,
+      artworkOverlayColor: list.artworkOverlayColor,
+    }))
+  );
+});
+
+discoverRoutes.get('/mdblist/collections/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const list = Number.isSafeInteger(id)
+    ? await getRepository(CustomList).findOne({
+        where: {
+          id,
+          provider: 'mdblist',
+          isCollection: true,
+          ...(isServerOwner(req.user) ? {} : { enabled: true }),
+        },
+      })
+    : null;
+  if (!list)
+    return res.status(404).json({ message: 'MDBList collection not found.' });
+  return res.json({
+    id: list.id,
+    title: list.title,
+    mediaType: list.mediaType,
+    itemCount: list.itemCount,
+    enabled: list.enabled,
+    sourceUrl: list.sourceUrl,
+    lastValidatedAt: list.lastValidatedAt,
+    selectedArtworkTmdbId: list.selectedArtworkTmdbId,
+    selectedArtworkPosterPath: list.selectedArtworkPosterPath,
+    artworkOverlayColor: list.artworkOverlayColor,
+  });
+});
+
+discoverRoutes.get('/mdblist/collections/:id/movies', async (req, res) => {
+  const query = CollectionQuerySchema.safeParse(req.query);
+  if (!query.success || (query.data.sortBy === 'random' && !query.data.seed)) {
+    return res.status(400).json({ message: 'Invalid collection query.' });
+  }
+  try {
+    const service = new MdblistCollectionService({
+      tmdb: createTmdbWithRegionLanguage(req.user),
+      language: req.locale,
+    });
+    return res.json(
+      await service.getCollectionPage({
+        id: Number(req.params.id),
+        user: req.user,
+        query: query.data,
+        allowDisabled: isServerOwner(req.user),
+      })
+    );
+  } catch (error) {
+    if (error instanceof MdblistCollectionError && error.code === 'not_found') {
+      return res.status(404).json({ message: error.message });
+    }
+    logger.warn('Unable to prepare an MDBList collection', {
+      label: 'MDBList',
+      collectionId: Number(req.params.id),
+      errorType:
+        error instanceof Error ? error.constructor.name : 'UnknownError',
+    });
+    return res
+      .status(503)
+      .json({ message: 'MDBList collection is temporarily unavailable.' });
+  }
+});
+
+discoverRoutes.get('/mdblist/collections/:id/tv', async (req, res) => {
+  const id = Number(req.params.id);
+  const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+  const list = Number.isSafeInteger(id)
+    ? await getRepository(CustomList).findOne({
+        where: {
+          id,
+          provider: 'mdblist',
+          mediaType: 'tv',
+          isCollection: true,
+          ...(isServerOwner(req.user) ? {} : { enabled: true }),
+        },
+      })
+    : null;
+  if (!list) {
+    return res.status(404).json({ message: 'TV collection not found.' });
+  }
+  try {
+    const provider = new MdblistProvider({
+      list: createMdblistListReference(list),
+      mediaType: 'tv',
+    });
+    const resultPage = await provider.getStreamingChartPage({
+      tmdb: createTmdbWithRegionLanguage(req.user),
+      user: req.user,
+      language: req.locale,
+      page,
+    });
+    return res.status(200).json({ ...resultPage, title: list.title });
+  } catch (error) {
+    logger.warn('Unable to prepare an MDBList TV collection', {
+      label: 'MDBList',
+      collectionId: id,
+      errorType:
+        error instanceof Error ? error.constructor.name : 'UnknownError',
+    });
+    return res.status(503).json({
+      message: 'TV collection is temporarily unavailable.',
+    });
+  }
+});
+
 const QueryFilterOptions = z.object({
   page: z.coerce.string().optional(),
   sortBy: z.coerce.string().optional(),
@@ -96,6 +256,132 @@ export type FilterOptions = z.infer<typeof QueryFilterOptions>;
 const ApiQuerySchema = QueryFilterOptions.omit({
   certificationMode: true,
 });
+
+discoverRoutes.get('/mdblist/lists/:listId/movies', async (req, res) => {
+  const listId = Number(req.params.listId);
+  const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+  if (!Number.isSafeInteger(listId) || listId <= 0) {
+    return res.status(404).json({ message: 'Custom list not found.' });
+  }
+
+  const list = await getRepository(CustomList).findOne({
+    where: {
+      id: listId,
+      provider: 'mdblist',
+      mediaType: 'movie',
+      isCollection: false,
+    },
+  });
+  if (!list) {
+    return res.status(404).json({ message: 'Custom list not found.' });
+  }
+
+  try {
+    const provider = new MdblistProvider({
+      list: createMdblistListReference(list),
+    });
+    const resultPage = await provider.getStreamingChartPage({
+      tmdb: createTmdbWithRegionLanguage(req.user),
+      user: req.user,
+      language: req.locale,
+      page,
+    });
+    return res.status(200).json({ ...resultPage, title: list.title });
+  } catch (error) {
+    logger.warn('Unable to prepare an MDBList custom movie list', {
+      label: 'MDBList',
+      listId,
+      errorType:
+        error instanceof Error ? error.constructor.name : 'UnknownError',
+    });
+    return res.status(200).json({
+      page: 1,
+      totalPages: 1,
+      totalResults: 0,
+      results: [],
+      title: list.title,
+    });
+  }
+});
+
+discoverRoutes.get('/mdblist/lists/:listId/tv', async (req, res) => {
+  const listId = Number(req.params.listId);
+  const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+  if (!Number.isSafeInteger(listId) || listId <= 0) {
+    return res.status(404).json({ message: 'Custom list not found.' });
+  }
+
+  const list = await getRepository(CustomList).findOne({
+    where: {
+      id: listId,
+      provider: 'mdblist',
+      mediaType: 'tv',
+      isCollection: false,
+    },
+  });
+  if (!list) {
+    return res.status(404).json({ message: 'Custom list not found.' });
+  }
+
+  try {
+    const provider = new MdblistProvider({
+      list: createMdblistListReference(list),
+      mediaType: 'tv',
+    });
+    const resultPage = await provider.getStreamingChartPage({
+      tmdb: createTmdbWithRegionLanguage(req.user),
+      user: req.user,
+      language: req.locale,
+      page,
+    });
+    return res.status(200).json({ ...resultPage, title: list.title });
+  } catch (error) {
+    logger.warn('Unable to prepare an MDBList custom TV list', {
+      label: 'MDBList',
+      listId,
+      errorType:
+        error instanceof Error ? error.constructor.name : 'UnknownError',
+    });
+    return res.status(200).json({
+      page: 1,
+      totalPages: 1,
+      totalResults: 0,
+      results: [],
+      title: list.title,
+    });
+  }
+});
+
+discoverRoutes.get(
+  '/mdblist/justwatch-streaming-charts/movies',
+  async (req, res) => {
+    const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+
+    try {
+      const provider = new MdblistProvider();
+      const resultPage = await provider.getStreamingChartPage({
+        tmdb: createTmdbWithRegionLanguage(req.user),
+        user: req.user,
+        language: req.locale,
+        page,
+      });
+
+      return res.status(200).json(resultPage);
+    } catch (error) {
+      logger.warn('Unable to prepare the MDBList streaming chart', {
+        label: 'MDBList',
+        errorType:
+          error instanceof Error ? error.constructor.name : 'UnknownError',
+      });
+      return res.status(200).json({
+        page: 1,
+        totalPages: 1,
+        totalResults: 0,
+        results: [],
+      });
+    }
+  }
+);
 
 discoverRoutes.get('/movies', async (req, res, next) => {
   const tmdb = createTmdbWithRegionLanguage(req.user);

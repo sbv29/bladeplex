@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+printf '%s\n' "$*" >>"${FAKE_DOCKER_LOG}"
+
+case "${1:-} ${2:-}" in
+  'compose version'|'info ')
+    exit 0
+    ;;
+  'image inspect')
+    [[ "${FAKE_IMAGE_EXISTS:-true}" == true ]] || exit 1
+    if [[ "$*" == *'{{.Id}}'* ]]; then
+      printf '%s\n' "${FAKE_IMAGE_ID}"
+    elif [[ "$*" == *'.Config.Env'* ]]; then
+      printf 'COMMIT_TAG=%s\n' "${FAKE_COMMIT_TAG:-test-commit}"
+    fi
+    ;;
+  'run --rm')
+    [[ "${FAKE_METADATA_VALID:-true}" == true ]] || exit 1
+    printf '%s' "${FAKE_METADATA_TAG:-${FAKE_COMMIT_TAG:-test-commit}}"
+    ;;
+  'container inspect')
+    exit 1
+    ;;
+  'compose -f')
+    printf 'compose-up image=%s %s\n' "${BLADEPLEX_IMAGE:-<unset>}" "$*" >>"${FAKE_DOCKER_LOG}"
+    exit 0
+    ;;
+  'inspect --format'|'inspect bladeplex')
+    if [[ "$*" == *'.State.Status'* ]]; then
+      printf 'running\n'
+    elif [[ "$*" == *'.Image'* ]]; then
+      printf '%s\n' "${FAKE_IMAGE_ID}"
+    elif [[ "$*" == *'.Config.Env'* ]]; then
+      printf 'COMMIT_TAG=%s\n' "${FAKE_COMMIT_TAG:-test-commit}"
+    fi
+    ;;
+  'exec bladeplex')
+    printf '{"commitTag":"%s"}\n' "${FAKE_COMMIT_TAG:-test-commit}"
+    ;;
+  *)
+    printf 'unexpected fake docker invocation: %s\n' "$*" >&2
+    exit 1
+    ;;
+esac

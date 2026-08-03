@@ -5,6 +5,7 @@ import PageTitle from '@app/components/Common/PageTitle';
 import Tooltip from '@app/components/Common/Tooltip';
 import CreateSlider from '@app/components/Discover/CreateSlider';
 import DiscoverSliderEdit from '@app/components/Discover/DiscoverSliderEdit';
+import MdblistCollectionSlider from '@app/components/Discover/MdblistCollectionSlider';
 import MovieGenreSlider from '@app/components/Discover/MovieGenreSlider';
 import NetworkSlider from '@app/components/Discover/NetworkSlider';
 import PlexWatchlistSlider from '@app/components/Discover/PlexWatchlistSlider';
@@ -254,6 +255,53 @@ const Discover = () => {
                 extraParams={`releaseDateGte=${newReleaseStartDate}&releaseDateLte=${upcomingDate}&releaseType=4&sortBy=release_date.desc&voteCountGte=10`}
               />
             );
+            break;
+          case DiscoverSliderType.MDBLIST_JUSTWATCH_STREAMING_CHART_MOVIES:
+            sliderComponent = (
+              <MediaSlider
+                sliderKey="mdblist-justwatch-streaming-chart-movies"
+                title={intl.formatMessage(
+                  sliderTitles.mdblistJustwatchStreamingChartMovies
+                )}
+                url="/api/v1/discover/mdblist/justwatch-streaming-charts/movies"
+                linkUrl="/discover/movies/mdblist-streaming"
+                hideWhenEmpty
+              />
+            );
+            break;
+          case DiscoverSliderType.MDBLIST_CUSTOM_MOVIES:
+            sliderComponent = slider.data ? (
+              <MediaSlider
+                sliderKey={`mdblist-custom-movies-${slider.data}`}
+                title={
+                  slider.title ??
+                  intl.formatMessage(sliderTitles.mdblistCustomMovies)
+                }
+                url={`/api/v1/discover/mdblist/lists/${slider.data}/movies`}
+                linkUrl={`/discover/movies/mdblist-list/${slider.data}`}
+                hideWhenEmpty
+              />
+            ) : null;
+            break;
+          case DiscoverSliderType.MDBLIST_CUSTOM_TV:
+            sliderComponent = slider.data ? (
+              <MediaSlider
+                sliderKey={`mdblist-custom-tv-${slider.data}`}
+                title={
+                  slider.title ??
+                  intl.formatMessage(sliderTitles.mdblistCustomTv)
+                }
+                url={`/api/v1/discover/mdblist/lists/${slider.data}/tv`}
+                linkUrl={`/discover/tv/mdblist/${slider.data}`}
+                hideWhenEmpty
+              />
+            ) : null;
+            break;
+          case DiscoverSliderType.MDBLIST_COLLECTIONS:
+            sliderComponent = <MdblistCollectionSlider mediaType="movie" />;
+            break;
+          case DiscoverSliderType.MDBLIST_TV_COLLECTIONS:
+            sliderComponent = <MdblistCollectionSlider mediaType="tv" />;
             break;
           case DiscoverSliderType.MOVIE_GENRES:
             sliderComponent = <MovieGenreSlider />;

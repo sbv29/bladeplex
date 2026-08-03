@@ -138,7 +138,7 @@ const checkOverseerrMerge = async (): Promise<boolean> => {
 
   // Replace default Overseerr values with Seerr values
   if (settings.main.applicationTitle === 'Overseerr') {
-    settings.main.applicationTitle = 'Seerr';
+    settings.main.applicationTitle = 'BladePlex';
   }
   if (settings.notifications.agents.email.options.senderName === 'Overseerr') {
     settings.notifications.agents.email.options.senderName = 'Seerr';

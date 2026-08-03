@@ -1,9 +1,10 @@
+import GithubAPI from '@server/api/github';
 import JellyfinAPI from '@server/api/jellyfin';
 import PlexAPI from '@server/api/plexapi';
 import PlexTvAPI from '@server/api/plextv';
 import TautulliAPI from '@server/api/tautulli';
 import { ApiErrorCode } from '@server/constants/error';
-import { getRepository } from '@server/datasource';
+import { getRepository, isPgsql } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
 import { User } from '@server/entity/User';
@@ -26,10 +27,20 @@ import type { JobId, Library, MainSettings } from '@server/lib/settings';
 import { getSettings, mobileAnnouncementColors } from '@server/lib/settings';
 import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
+import customListRoutes from '@server/routes/settings/customLists';
 import discoverSettingRoutes from '@server/routes/settings/discover';
+import mdblistCollectionRoutes from '@server/routes/settings/mdblistCollections';
 import { ApiError } from '@server/types/error';
 import { appDataPath } from '@server/utils/appDataVolume';
-import { getAppVersion } from '@server/utils/appVersion';
+import {
+  getAppVersion,
+  getBladePlexVersion,
+  getBuildBranch,
+  getBuildCommit,
+  getCommitTag,
+  getDeploymentType,
+  getUpstreamVersion,
+} from '@server/utils/appVersion';
 import { dnsCache } from '@server/utils/dnsCache';
 import { getHostname } from '@server/utils/getHostname';
 import type { DnsEntries, DnsStats } from 'dns-caching';
@@ -49,10 +60,14 @@ import sonarrRoutes from './sonarr';
 
 const settingsRoutes = Router();
 
+export const MDBLIST_API_KEY_MASK = '********';
+
 settingsRoutes.use('/notifications', notificationRoutes);
 settingsRoutes.use('/radarr', radarrRoutes);
 settingsRoutes.use('/sonarr', sonarrRoutes);
 settingsRoutes.use('/discover', discoverSettingRoutes);
+settingsRoutes.use('/custom-lists', customListRoutes);
+settingsRoutes.use('/mdblist-collections', mdblistCollectionRoutes);
 settingsRoutes.use('/metadatas', metadataRoutes);
 
 const filteredMainSettings = (
@@ -60,10 +75,17 @@ const filteredMainSettings = (
   main: MainSettings
 ): Partial<MainSettings> => {
   if (!user?.hasPermission(Permission.ADMIN)) {
-    return omit(main, 'apiKey');
+    return omit(main, 'apiKey', 'mdblistApiKey');
   }
 
-  return main;
+  if (user.id !== 1) {
+    return omit(main, 'mdblistApiKey');
+  }
+
+  return {
+    ...main,
+    mdblistApiKey: main.mdblistApiKey ? MDBLIST_API_KEY_MASK : '',
+  };
 };
 
 settingsRoutes.get('/main', (req, res, next) => {
@@ -96,6 +118,26 @@ const mobileAnnouncementSchema = z
 
 settingsRoutes.post('/main', async (req, res, next) => {
   const settings = getSettings();
+
+  const updatesMdblistApiKey = Object.prototype.hasOwnProperty.call(
+    req.body,
+    'mdblistApiKey'
+  );
+  if (updatesMdblistApiKey && req.user?.id !== 1) {
+    return next({
+      status: 403,
+      message: 'Only the owner can update the MDBList API key.',
+    });
+  }
+
+  const parsedMdblistApiKey = z
+    .string()
+    .trim()
+    .max(200)
+    .safeParse(req.body.mdblistApiKey);
+  if (updatesMdblistApiKey && !parsedMdblistApiKey.success) {
+    return next({ status: 400, message: 'Invalid MDBList API key.' });
+  }
 
   const announcementKeys = [
     'mobileAnnouncementEnabled',
@@ -145,9 +187,18 @@ settingsRoutes.post('/main', async (req, res, next) => {
 
   const nextSettings = omit(
     req.body,
+    'mdblistApiKey',
     'mobileAnnouncementRevision',
     'mobileAnnouncementExpiresAt'
   );
+  if (
+    updatesMdblistApiKey &&
+    parsedMdblistApiKey.success &&
+    parsedMdblistApiKey.data &&
+    parsedMdblistApiKey.data !== MDBLIST_API_KEY_MASK
+  ) {
+    nextSettings.mdblistApiKey = parsedMdblistApiKey.data;
+  }
   if (updatesAnnouncement) {
     Object.assign(nextSettings, {
       mobileAnnouncementEnabled: announcement.data.enabled,
@@ -170,7 +221,11 @@ settingsRoutes.post('/main', async (req, res, next) => {
   settings.main = merge(settings.main, nextSettings);
   await settings.save();
 
-  return res.status(200).json(settings.main);
+  if (!req.user) {
+    return next({ status: 500, message: 'User missing from request.' });
+  }
+
+  return res.status(200).json(filteredMainSettings(req.user, settings.main));
 });
 
 settingsRoutes.get('/network', (req, res) => {
@@ -755,6 +810,7 @@ settingsRoutes.get('/jobs', (_req, res) => {
       cronSchedule: job.cronSchedule,
       nextExecutionTime: job.job.nextInvocation(),
       running: job.running ? job.running() : false,
+      status: job.status?.(),
     }))
   );
 });
@@ -776,6 +832,7 @@ settingsRoutes.post<{ jobId: string }>('/jobs/:jobId/run', (req, res, next) => {
     cronSchedule: scheduledJob.cronSchedule,
     nextExecutionTime: scheduledJob.job.nextInvocation(),
     running: scheduledJob.running ? scheduledJob.running() : false,
+    status: scheduledJob.status?.(),
   });
 });
 
@@ -802,6 +859,7 @@ settingsRoutes.post<{ jobId: JobId }>(
       cronSchedule: scheduledJob.cronSchedule,
       nextExecutionTime: scheduledJob.job.nextInvocation(),
       running: scheduledJob.running ? scheduledJob.running() : false,
+      status: scheduledJob.status?.(),
     });
   }
 );
@@ -834,6 +892,7 @@ settingsRoutes.post<{ jobId: JobId }>(
         cronSchedule: scheduledJob.cronSchedule,
         nextExecutionTime: scheduledJob.job.nextInvocation(),
         running: scheduledJob.running ? scheduledJob.running() : false,
+        status: scheduledJob.status?.(),
       });
     } else {
       return next({ status: 400, message: 'Invalid job schedule.' });
@@ -888,6 +947,12 @@ settingsRoutes.post<{ cacheId: string }>(
   '/cache/:cacheId/flush',
   async (req, res, next) => {
     if (req.params.cacheId === 'imdb-ratings-persistent') {
+      if (req.body?.confirm !== true) {
+        return next({
+          status: 400,
+          message: 'Explicit confirmation is required to clear this cache.',
+        });
+      }
       if (imdbRatingCache.status().running) {
         return next({
           status: 409,
@@ -940,15 +1005,49 @@ settingsRoutes.post(
   }
 );
 
-settingsRoutes.get('/about', async (req, res) => {
+settingsRoutes.get('/about', async (_req, res) => {
   const mediaRepository = getRepository(Media);
   const mediaRequestRepository = getRepository(MediaRequest);
+  const settings = getSettings();
 
   const totalMediaItems = await mediaRepository.count();
   const totalRequests = await mediaRequestRepository.count();
+  const upstreamVersion = getUpstreamVersion();
+  let latestUpstreamVersion: string | undefined;
+  let upstreamStatus: SettingsAboutResponse['upstreamStatus'] = settings
+    .fullPublicSettings.versionCheck
+    ? 'unavailable'
+    : 'disabled';
+
+  if (settings.fullPublicSettings.versionCheck && upstreamVersion) {
+    const releases = await new GithubAPI().getSeerrReleases({ take: 1 });
+    const latestRelease = releases[0];
+    const currentSemver = semver.coerce(upstreamVersion);
+    const latestSemver = latestRelease
+      ? semver.coerce(latestRelease.tag_name || latestRelease.name)
+      : null;
+
+    if (latestRelease && currentSemver && latestSemver) {
+      latestUpstreamVersion = latestRelease.tag_name || latestRelease.name;
+      upstreamStatus = semver.gt(latestSemver, currentSemver)
+        ? 'update-available'
+        : 'up-to-date';
+    }
+  }
 
   return res.status(200).json({
     version: getAppVersion(),
+    bladeplexVersion: getBladePlexVersion(),
+    commitTag: getCommitTag(),
+    commit: getBuildCommit(),
+    branch: getBuildBranch(),
+    nodeVersion: process.version,
+    environment: process.env.NODE_ENV ?? 'development',
+    deploymentType: getDeploymentType(),
+    databaseType: isPgsql ? 'postgres' : 'sqlite',
+    upstreamVersion,
+    latestUpstreamVersion,
+    upstreamStatus,
     totalMediaItems,
     totalRequests,
     tz: process.env.TZ,

@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.local
     ports:
-      - 5055:5055
+      - 127.0.0.1:5055:5055
     volumes:
       - .:/app:rw,cached
       - /app/node_modules

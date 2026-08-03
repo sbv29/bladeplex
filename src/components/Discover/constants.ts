@@ -70,6 +70,12 @@ export const sliderTitles = defineMessages('components.Discover', {
   recentrequests: 'Recent Requests',
   popularmovies: 'Popular Movies',
   newreleases: 'New Releases',
+  mdblistJustwatchStreamingChartMovies:
+    'United States Daily Streaming Charts: Movies',
+  mdblistCustomMovies: 'MDBList Movies',
+  mdblistCustomTv: 'MDBList Series',
+  mdblistCollections: 'Movie Collections',
+  mdblistTvCollections: 'TV Collections',
   populartv: 'Popular Series',
   upcomingtv: 'Upcoming Series',
   recentlyAdded: 'Recently Added',

@@ -10,7 +10,7 @@ export interface SettingsContextProps {
 
 const defaultSettings: PublicSettingsResponse = {
   initialized: false,
-  applicationTitle: 'Seerr',
+  applicationTitle: 'BladePlex',
   applicationUrl: '',
   hideAvailable: false,
   hideBlocklisted: false,

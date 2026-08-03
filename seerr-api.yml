@@ -265,6 +265,10 @@ components:
         apiKey:
           type: string
           readOnly: true
+        mdblistApiKey:
+          type: string
+          maxLength: 200
+          description: Owner-only masked MDBList API key. A masked or blank value preserves the stored key.
         appLanguage:
           type: string
           example: en
@@ -1701,6 +1705,11 @@ components:
         running:
           type: boolean
           example: false
+        status:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Optional live progress and provider status for process jobs
     PersonDetails:
       type: object
       properties:
@@ -2161,6 +2170,52 @@ components:
         - enabled
         - title
         - data
+    CustomList:
+      type: object
+      properties:
+        id:
+          type: integer
+        provider:
+          type: string
+          enum: [mdblist]
+        listType:
+          type: string
+          enum: [official, public]
+        title:
+          type: string
+        sourceUrl:
+          type: string
+          format: uri
+        username:
+          type: string
+        slug:
+          type: string
+        mediaType:
+          type: string
+          enum: [movie, tv]
+        itemCount:
+          type: integer
+        discoverSlider:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            enabled:
+              type: boolean
+            order:
+              type: integer
+    CustomListInput:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          maxLength: 500
+        title:
+          type: string
+          maxLength: 100
     WatchProviderRegion:
       type: object
       properties:
@@ -3287,7 +3342,18 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm:
+                  type: boolean
+                  description: Required for destructive persistent IMDb cache clearing
       responses:
+        '400':
+          description: Explicit confirmation required
         '204':
           description: 'Flushed cache'
   /settings/cache/dns/{dnsEntry}/flush:
@@ -3979,6 +4045,95 @@ paths:
       responses:
         '204':
           description: All sliders reset to defaults
+  /settings/custom-lists:
+    get:
+      summary: Get custom discovery lists
+      description: Returns administrator-managed MDBList movie and TV lists. Requires the `ADMIN` permission.
+      tags:
+        - settings
+      responses:
+        '200':
+          description: Custom lists and MDBList configuration status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mdblistConfigured:
+                    type: boolean
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CustomList'
+    post:
+      summary: Add an MDBList movie or TV list to Discover
+      description: Validates a fixed MDBList list reference and creates its managed Discover slider. Requires the `ADMIN` permission.
+      tags:
+        - settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomListInput'
+      responses:
+        '201':
+          description: Custom list created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomList'
+  /settings/custom-lists/validate:
+    post:
+      summary: Validate and preview an MDBList movie or TV list
+      description: Resolves list metadata and a small preview without persisting it. Requires the `ADMIN` permission.
+      tags:
+        - settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomListInput'
+      responses:
+        '200':
+          description: Validated list metadata and preview
+  /settings/custom-lists/{listId}:
+    parameters:
+      - in: path
+        name: listId
+        required: true
+        schema:
+          type: integer
+    put:
+      summary: Rename a custom list
+      tags:
+        - settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                  maxLength: 100
+      responses:
+        '200':
+          description: Custom list renamed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomList'
+    delete:
+      summary: Delete a custom list and its managed Discover slider
+      tags:
+        - settings
+      responses:
+        '204':
+          description: Custom list removed
   /settings/about:
     get:
       summary: Get server stats
@@ -3996,6 +4151,43 @@ paths:
                   version:
                     type: string
                     example: '1.0.0'
+                  bladeplexVersion:
+                    type: string
+                    example: '2c0cd772-main'
+                  commitTag:
+                    type: string
+                    example: '2c0cd772-main'
+                  commit:
+                    type: string
+                    example: '2c0cd772'
+                  branch:
+                    type: string
+                    example: 'main'
+                  nodeVersion:
+                    type: string
+                    example: 'v22.22.2'
+                  environment:
+                    type: string
+                    example: 'production'
+                  deploymentType:
+                    type: string
+                    enum: [docker, local]
+                  databaseType:
+                    type: string
+                    enum: [postgres, sqlite]
+                  upstreamVersion:
+                    type: string
+                    example: 'v3.4.0'
+                  latestUpstreamVersion:
+                    type: string
+                    example: 'v3.4.0'
+                  upstreamStatus:
+                    type: string
+                    enum:
+                      - up-to-date
+                      - update-available
+                      - unavailable
+                      - disabled
                   totalRequests:
                     type: number
                     example: 100
@@ -5614,6 +5806,380 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Company'
+  /discover/mdblist/justwatch-streaming-charts/movies:
+    get:
+      summary: Get the official MDBList United States daily movie streaming chart
+      description: Returns a locally paginated page from the complete cached MDBList-ranked movie chart, hydrated through TMDb. Returns an empty result when this optional provider is unavailable or unconfigured.
+      tags:
+        - search
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: number
+            example: 1
+            default: 1
+      responses:
+        '200':
+          description: A native movie discovery response ordered by MDBList rank
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: number
+                    example: 1
+                  totalPages:
+                    type: number
+                    example: 1
+                  totalResults:
+                    type: number
+                    example: 20
+                  results:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/MovieResult'
+                        - type: object
+                          properties:
+                            mdblistRank:
+                              type: integer
+                              minimum: 1
+  /settings/mdblist-collections:
+    get:
+      summary: List owner-managed MDBList collections
+      tags: [settings]
+      responses:
+        '200': { description: Collection manager state }
+        '403': { description: Server owner required }
+    post:
+      summary: Create an MDBList collection
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, maxLength: 500 }
+                title: { type: string, maxLength: 100 }
+                artworkOverlayColor:
+                  type: string
+                  pattern: '^#[0-9a-fA-F]{6}$'
+                mediaType:
+                  type: string
+                  enum: [movie, tv]
+      responses:
+        '201': { description: Collection created }
+        '400': { description: Invalid or inaccessible list }
+        '403': { description: Server owner required }
+        '409': { description: Duplicate collection }
+  /settings/mdblist-collections/validate:
+    post:
+      summary: Validate an MDBList movie or TV list URL
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, maxLength: 500 }
+                title: { type: string, maxLength: 100 }
+                mediaType:
+                  type: string
+                  enum: [movie, tv]
+      responses:
+        '200': { description: Sanitized validation preview }
+        '400': { description: Invalid or inaccessible list }
+        '403': { description: Server owner required }
+        '429': { description: Too many validation attempts }
+  /settings/mdblist-collections/reorder:
+    put:
+      summary: Reorder MDBList collections
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  maxItems: 100
+                  items: { type: integer, minimum: 1 }
+                mediaType:
+                  type: string
+                  enum: [movie, tv]
+      responses:
+        '200': { description: Reordered collections }
+        '400': { description: Invalid order }
+        '403': { description: Server owner required }
+  /settings/mdblist-collections/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    put:
+      summary: Update an MDBList collection
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string, maxLength: 500 }
+                title: { type: string, maxLength: 100 }
+                artworkOverlayColor:
+                  type: string
+                  pattern: '^#[0-9a-fA-F]{6}$'
+      responses:
+        '200': { description: Updated collection }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+    delete:
+      summary: Delete an MDBList collection
+      tags: [settings]
+      responses:
+        '204': { description: Collection deleted }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+  /settings/mdblist-collections/{id}/enabled:
+    put:
+      summary: Enable or disable an MDBList collection
+      tags: [settings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        '200': { description: Updated collection }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+  /settings/mdblist-collections/{id}/shuffle-artwork:
+    post:
+      summary: Select different persisted collection artwork
+      tags: [settings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Updated collection }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+  /settings/mdblist-collections/{id}/refresh:
+    post:
+      summary: Revalidate and refresh an MDBList collection
+      tags: [settings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Refreshed collection }
+        '403': { description: Server owner required }
+        '404': { description: Collection not found }
+  /discover/mdblist/collections:
+    get:
+      summary: List enabled MDBList collection tiles
+      tags: [search]
+      responses:
+        '200': { description: Enabled collections in configured order }
+  /discover/mdblist/collections/{id}:
+    get:
+      summary: Get safe MDBList collection metadata
+      tags: [search]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Safe collection metadata }
+        '404': { description: Collection not found }
+  /discover/mdblist/collections/{id}/movies:
+    get:
+      summary: Get normalized and locally paginated collection movies
+      tags: [search]
+      parameters:
+        - {
+            in: path,
+            name: id,
+            required: true,
+            schema: { type: integer, minimum: 1 },
+          }
+        - {
+            in: query,
+            name: page,
+            schema: { type: integer, minimum: 1, default: 1 },
+          }
+        - {
+            in: query,
+            name: sortBy,
+            schema:
+              {
+                type: string,
+                enum:
+                  [
+                    rank,
+                    random,
+                    release_date.desc,
+                    release_date.asc,
+                    title.asc,
+                    title.desc,
+                    rating.desc,
+                    popularity.desc,
+                  ],
+              },
+          }
+        - { in: query, name: seed, schema: { type: string, maxLength: 64 } }
+        - { in: query, name: genre, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: yearGte, schema: { type: integer } }
+        - { in: query, name: yearLte, schema: { type: integer } }
+        - {
+            in: query,
+            name: voteAverageGte,
+            schema: { type: number, minimum: 0, maximum: 10 },
+          }
+        - { in: query, name: mediaStatus, schema: { type: integer } }
+        - { in: query, name: hideAvailable, schema: { type: boolean } }
+      responses:
+        '200':
+          {
+            description: Native movie results after local filtering and sorting,
+          }
+        '400': { description: Invalid query }
+        '404': { description: Collection not found }
+        '503': { description: Collection temporarily unavailable }
+  /discover/mdblist/collections/{id}/tv:
+    get:
+      summary: Get a configured MDBList TV collection
+      tags: [search]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+      responses:
+        '200': { description: Native TV results in MDBList rank order }
+        '404': { description: Collection not found }
+        '503': { description: Collection temporarily unavailable }
+  /discover/mdblist/lists/{listId}/movies:
+    get:
+      summary: Get a configured MDBList custom movie list
+      description: Returns a locally paginated native movie result page from the administrator-approved list. MDBList is accessed only by the server.
+      tags:
+        - search
+      parameters:
+        - in: path
+          name: listId
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: page
+          schema:
+            type: number
+            default: 1
+      responses:
+        '200':
+          description: Native movie results in MDBList rank order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: number
+                  totalPages:
+                    type: number
+                  totalResults:
+                    type: number
+                  title:
+                    type: string
+                  results:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/MovieResult'
+                        - type: object
+                          properties:
+                            mdblistRank:
+                              type: integer
+                              minimum: 1
+        '404':
+          description: Custom list not found
+  /discover/mdblist/lists/{listId}/tv:
+    get:
+      summary: Get a configured MDBList custom TV list
+      description: Returns a locally paginated native TV result page from the administrator-approved list. MDBList is accessed only by the server.
+      tags:
+        - search
+      parameters:
+        - in: path
+          name: listId
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: page
+          schema:
+            type: number
+            default: 1
+      responses:
+        '200':
+          description: Native TV results in MDBList rank order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: number
+                  totalPages:
+                    type: number
+                  totalResults:
+                    type: number
+                  title:
+                    type: string
+                  results:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/TvResult'
+                        - type: object
+                          properties:
+                            mdblistRank:
+                              type: integer
+                              minimum: 1
+        '404':
+          description: Custom list not found
   /discover/movies:
     get:
       summary: Discover movies

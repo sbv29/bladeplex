@@ -1,0 +1,30 @@
+name: ${BLADEPLEX_PROJECT_NAME:-bladeplex}
+
+services:
+  bladeplex:
+    container_name: ${BLADEPLEX_CONTAINER_NAME:-bladeplex}
+    image: ${BLADEPLEX_IMAGE:-bladeplex:latest}
+    build:
+      context: .
+      args:
+        COMMIT_TAG: ${COMMIT_TAG}
+    ports:
+      - '127.0.0.1:${BLADEPLEX_HOST_PORT:-5055}:5055'
+    volumes:
+      - '${BLADEPLEX_CONFIG_PATH:-/opt/stacks/seerr/config}:/app/config'
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:5055/', { redirect: 'manual' })
+          .then((response) => process.exit(response.status >= 200 &&
+          response.status < 400 ? 0 : 1)).catch(() => process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
