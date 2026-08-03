@@ -78,7 +78,14 @@ class MdblistAPI extends ExternalAPI {
       );
       pagesFetched += 1;
       const page = MdblistListItemsResponseSchema.parse(response);
-      items.push(...page.movies.slice(0, requestedLimit - items.length));
+      const sourceOffset = items.length;
+      const movies = page.movies.map((movie, index) => ({
+        ...movie,
+        // Some manually ordered or mixed-media lists return null ranks.
+        // MDBList's observed numeric ranks use 1000-point source positions.
+        rank: movie.rank || (sourceOffset + index + 1) * 1000,
+      }));
+      items.push(...movies.slice(0, requestedLimit - items.length));
 
       const nextCursor = page.pagination?.next_cursor ?? undefined;
       if (
@@ -146,7 +153,12 @@ class MdblistAPI extends ExternalAPI {
       );
       pagesFetched += 1;
       const page = MdblistShowListItemsResponseSchema.parse(response);
-      items.push(...page.shows.slice(0, requestedLimit - items.length));
+      const sourceOffset = items.length;
+      const shows = page.shows.map((show, index) => ({
+        ...show,
+        rank: show.rank || (sourceOffset + index + 1) * 1000,
+      }));
+      items.push(...shows.slice(0, requestedLimit - items.length));
 
       const nextCursor = page.pagination?.next_cursor ?? undefined;
       if (
