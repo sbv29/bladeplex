@@ -26,6 +26,7 @@ interface ScheduledJob {
   interval: 'seconds' | 'minutes' | 'hours' | 'days' | 'fixed';
   cronSchedule: string;
   running?: () => boolean;
+  status?: () => unknown;
   cancelFn?: () => void;
 }
 
@@ -260,6 +261,7 @@ export const startJobs = (): void => {
       }
     ),
     running: () => imdbRatingCache.status().running,
+    status: () => imdbRatingCache.status(),
     cancelFn: () => imdbRatingCache.cancel(),
   });
 

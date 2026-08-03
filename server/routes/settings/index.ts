@@ -810,6 +810,7 @@ settingsRoutes.get('/jobs', (_req, res) => {
       cronSchedule: job.cronSchedule,
       nextExecutionTime: job.job.nextInvocation(),
       running: job.running ? job.running() : false,
+      status: job.status?.(),
     }))
   );
 });
@@ -831,6 +832,7 @@ settingsRoutes.post<{ jobId: string }>('/jobs/:jobId/run', (req, res, next) => {
     cronSchedule: scheduledJob.cronSchedule,
     nextExecutionTime: scheduledJob.job.nextInvocation(),
     running: scheduledJob.running ? scheduledJob.running() : false,
+    status: scheduledJob.status?.(),
   });
 });
 
@@ -857,6 +859,7 @@ settingsRoutes.post<{ jobId: JobId }>(
       cronSchedule: scheduledJob.cronSchedule,
       nextExecutionTime: scheduledJob.job.nextInvocation(),
       running: scheduledJob.running ? scheduledJob.running() : false,
+      status: scheduledJob.status?.(),
     });
   }
 );
@@ -889,6 +892,7 @@ settingsRoutes.post<{ jobId: JobId }>(
         cronSchedule: scheduledJob.cronSchedule,
         nextExecutionTime: scheduledJob.job.nextInvocation(),
         running: scheduledJob.running ? scheduledJob.running() : false,
+        status: scheduledJob.status?.(),
       });
     } else {
       return next({ status: 400, message: 'Invalid job schedule.' });
@@ -943,6 +947,12 @@ settingsRoutes.post<{ cacheId: string }>(
   '/cache/:cacheId/flush',
   async (req, res, next) => {
     if (req.params.cacheId === 'imdb-ratings-persistent') {
+      if (req.body?.confirm !== true) {
+        return next({
+          status: 400,
+          message: 'Explicit confirmation is required to clear this cache.',
+        });
+      }
       if (imdbRatingCache.status().running) {
         return next({
           status: 409,

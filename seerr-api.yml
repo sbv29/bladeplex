@@ -1705,6 +1705,11 @@ components:
         running:
           type: boolean
           example: false
+        status:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Optional live progress and provider status for process jobs
     PersonDetails:
       type: object
       properties:
@@ -3337,7 +3342,18 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm:
+                  type: boolean
+                  description: Required for destructive persistent IMDb cache clearing
       responses:
+        '400':
+          description: Explicit confirmation required
         '204':
           description: 'Flushed cache'
   /settings/cache/dns/{dnsEntry}/flush:

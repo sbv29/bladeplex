@@ -40,6 +40,9 @@ export class ImdbRatingCache {
   @Column({ type: 'varchar', nullable: true })
   public url?: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  public source?: string | null;
+
   @Column({ type: 'boolean', default: false })
   public missing: boolean;
 
@@ -51,6 +54,10 @@ export class ImdbRatingCache {
 
   @DbAwareColumn({ type: 'datetime', nullable: true })
   public lastSuccessAt?: Date | null;
+
+  @DbAwareColumn({ type: 'datetime', nullable: true })
+  @Index()
+  public nextRetryAt?: Date | null;
 
   @CreateDateColumn({
     type: resolveDbType('datetime'),

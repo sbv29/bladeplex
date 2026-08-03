@@ -14,6 +14,7 @@ import type {
 import { MediaServerType } from '@server/constants/server';
 import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
+import imdbRatingCache from '@server/lib/imdbRatingCache';
 import type {
   ProcessableSeason,
   RunnableScanner,
@@ -532,6 +533,18 @@ class JellyfinScanner
           : 'Full Scan Complete',
         'info'
       );
+      void imdbRatingCache
+        .warmLibrary(settings.main.mediaServerType)
+        .catch((error) => {
+          this.log(
+            'Unable to warm IMDb ratings cache after Jellyfin scan',
+            'warn',
+            {
+              errorMessage:
+                error instanceof Error ? error.message : 'Unknown error',
+            }
+          );
+        });
     } catch (e) {
       this.log('Sync interrupted', 'error', { errorMessage: e.message });
     } finally {

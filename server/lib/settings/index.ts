@@ -646,7 +646,7 @@ class Settings {
           schedule: '0 0 5 * * *',
         },
         'imdb-ratings-cache-refresh': {
-          schedule: '0 30 3 * * *',
+          schedule: '0 30 3 * * 0',
         },
         'process-blocklisted-tags': {
           schedule: '0 30 1 */7 * *',

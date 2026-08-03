@@ -49,6 +49,10 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages(
     cacheDescription:
       'Seerr caches requests to external API endpoints to optimize performance and avoid making unnecessary API calls.',
     cacheflushed: '{cachename} cache flushed.',
+    clearPersistentRatings: 'Clear persistent IMDb ratings?',
+    clearPersistentRatingsWarning:
+      'This permanently removes all cached IMDb ratings. Badges will disappear until titles are gradually repopulated by background and scheduled jobs.',
+    confirmClear: 'Clear Ratings',
     cachename: 'Cache Name',
     cachehits: 'Hits',
     cachemisses: 'Misses',
@@ -121,6 +125,15 @@ interface Job {
   cronSchedule: string;
   nextExecutionTime: string;
   running: boolean;
+  status?: {
+    progress?: number;
+    total?: number;
+    requests?: number;
+    successes?: number;
+    failures?: number;
+    queued?: number;
+    cooldownUntil?: string;
+  };
 }
 
 type JobModalState = {
@@ -204,6 +217,7 @@ const SettingsJobs = () => {
     scheduleSeconds: 30,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [flushTarget, setFlushTarget] = useState<CacheItem>();
   const settings = useSettings();
 
   if (settings.currentSettings.mediaServerType === MediaServerType.EMBY) {
@@ -253,7 +267,9 @@ const SettingsJobs = () => {
   };
 
   const flushCache = async (cache: CacheItem) => {
-    await axios.post(`/api/v1/settings/cache/${cache.id}/flush`);
+    await axios.post(`/api/v1/settings/cache/${cache.id}/flush`, {
+      confirm: cache.id === 'imdb-ratings-persistent',
+    });
     addToast(
       intl.formatMessage(messages.cacheflushed, { cachename: cache.name }),
       {
@@ -262,6 +278,7 @@ const SettingsJobs = () => {
       }
     );
     cacheRevalidate();
+    setFlushTarget(undefined);
   };
 
   const flushDnsCache = async (hostname: string) => {
@@ -478,6 +495,26 @@ const SettingsJobs = () => {
           </div>
         </Modal>
       </Transition>
+      <Transition
+        as={Fragment}
+        enter="transition-opacity duration-300"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition-opacity duration-300"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+        show={flushTarget?.id === 'imdb-ratings-persistent'}
+      >
+        <Modal
+          title={intl.formatMessage(messages.clearPersistentRatings)}
+          okText={intl.formatMessage(messages.confirmClear)}
+          okButtonType="danger"
+          onCancel={() => setFlushTarget(undefined)}
+          onOk={() => flushTarget && flushCache(flushTarget)}
+        >
+          {intl.formatMessage(messages.clearPersistentRatingsWarning)}
+        </Modal>
+      </Transition>
 
       <div className="mb-6">
         <h3 className="heading">{intl.formatMessage(messages.jobs)}</h3>
@@ -507,6 +544,16 @@ const SettingsJobs = () => {
                     </span>
                     {job.running && <Spinner className="ml-2 h-5 w-5" />}
                   </div>
+                  {job.id === 'imdb-ratings-cache-refresh' && job.status && (
+                    <div className="mt-1 text-xs text-gray-400">
+                      {job.status.progress ?? 0}/{job.status.total ?? 0} ·{' '}
+                      {job.status.requests ?? 0} requests ·{' '}
+                      {job.status.successes ?? 0} updated ·{' '}
+                      {job.status.failures ?? 0} failed
+                      {(job.status.queued ?? 0) > 0 &&
+                        ` · ${job.status.queued} queued`}
+                    </div>
+                  )}
                 </Table.TD>
                 <Table.TD>
                   <Badge
@@ -610,7 +657,11 @@ const SettingsJobs = () => {
                   <Table.TD alignText="right">
                     <Button
                       buttonType="danger"
-                      onClick={() => flushCache(cache)}
+                      onClick={() =>
+                        cache.id === 'imdb-ratings-persistent'
+                          ? setFlushTarget(cache)
+                          : flushCache(cache)
+                      }
                     >
                       <TrashIcon />
                       <span>{intl.formatMessage(messages.flushcache)}</span>

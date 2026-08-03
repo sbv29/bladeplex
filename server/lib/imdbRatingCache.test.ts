@@ -1,18 +1,25 @@
 import assert from 'node:assert/strict';
-import { describe, it, mock } from 'node:test';
+import { beforeEach, describe, it, mock } from 'node:test';
 
-import ImdbApi from '@server/api/rating/imdb';
-import IMDBRadarrProxy from '@server/api/rating/imdbRadarrProxy';
+import MdblistRatingsAPI from '@server/api/mdblist/ratings';
 import { MediaType } from '@server/constants/media';
+import { MediaServerType } from '@server/constants/server';
 import { getRepository } from '@server/datasource';
 import { ImdbRatingCache } from '@server/entity/ImdbRatingCache';
+import Media from '@server/entity/Media';
 import imdbRatingCache from '@server/lib/imdbRatingCache';
+import { getSettings } from '@server/lib/settings';
 import { AddImdbRatingCache1785270000000 } from '@server/migration/sqlite/1785270000000-AddImdbRatingCache';
 import { AddMediaTypeToImdbRatingCache1785400000000 } from '@server/migration/sqlite/1785400000000-AddMediaTypeToImdbRatingCache';
+import { AddImdbRatingProviderState1785544000000 } from '@server/migration/sqlite/1785544000000-AddImdbRatingProviderState';
 import { setupTestDb } from '@server/test/db';
 import { DataSource } from 'typeorm';
 
 setupTestDb();
+
+beforeEach(() => {
+  getSettings().main.mdblistApiKey = 'test-key';
+});
 
 describe('IMDb rating cache', () => {
   it('applies and reverts the SQLite migration', async () => {
@@ -76,40 +83,60 @@ describe('IMDb rating cache', () => {
   });
 
   it('persists a cold rating and reuses it on the next request', async () => {
-    const getMovieRatings = mock.method(
-      IMDBRadarrProxy.prototype,
-      'getMovieRatings',
+    const getImdbRatings = mock.method(
+      MdblistRatingsAPI.prototype,
+      'getImdbRatings',
       async () => ({
-        title: 'Fight Club',
-        url: 'https://www.imdb.com/title/tt0137523',
-        criticsScore: 8.8,
-        criticsScoreCount: 2_631_028,
+        ratings: [
+          {
+            tmdbId: 550,
+            imdbId: 'tt0137523',
+            title: 'Fight Club',
+            rating: 8.8,
+            votes: 2_631_028,
+          },
+        ],
+        returnedTmdbIds: new Set([550]),
+        quota: { limit: 1000, remaining: 900 },
       })
     );
 
     try {
       const imdbIds = new Map([[550, 'tt0137523']]);
       const first = await imdbRatingCache.getRatings([550], imdbIds);
+      assert.strictEqual(first['550'], null);
+      await imdbRatingCache.processPending();
       const second = await imdbRatingCache.getRatings([550], imdbIds);
 
-      assert.strictEqual(first['550']?.criticsScore, 8.8);
-      assert.deepStrictEqual(second, first);
-      assert.strictEqual(getMovieRatings.mock.callCount(), 1);
+      assert.strictEqual(second['550']?.criticsScore, 8.8);
+      assert.strictEqual(getImdbRatings.mock.callCount(), 1);
       assert.strictEqual(await getRepository(ImdbRatingCache).count(), 1);
+      const record = await getRepository(ImdbRatingCache).findOneByOrFail({
+        tmdbId: 550,
+      });
+      assert.strictEqual(record.source, 'mdblist-imdb');
+      assert.ok(record.nextRetryAt);
     } finally {
-      getMovieRatings.mock.restore();
+      getImdbRatings.mock.restore();
     }
   });
 
   it('uses show-level IMDb ratings for TV series', async () => {
-    const getTitleRating = mock.method(
-      ImdbApi.prototype,
-      'getTitleRating',
+    const getImdbRatings = mock.method(
+      MdblistRatingsAPI.prototype,
+      'getImdbRatings',
       async () => ({
-        title: 'Breaking Bad',
-        url: 'https://www.imdb.com/title/tt0903747',
-        criticsScore: 9.5,
-        criticsScoreCount: 2_649_218,
+        ratings: [
+          {
+            tmdbId: 1396,
+            imdbId: 'tt0903747',
+            title: 'Breaking Bad',
+            rating: 9.5,
+            votes: 2_649_218,
+          },
+        ],
+        returnedTmdbIds: new Set([1396]),
+        quota: {},
       })
     );
 
@@ -119,9 +146,16 @@ describe('IMDb rating cache', () => {
         new Map([[1396, 'tt0903747']]),
         MediaType.TV
       );
+      assert.strictEqual(ratings['1396'], null);
+      await imdbRatingCache.processPending();
+      const persisted = await imdbRatingCache.getRatings(
+        [1396],
+        new Map(),
+        MediaType.TV
+      );
 
-      assert.strictEqual(ratings['1396']?.criticsScore, 9.5);
-      assert.strictEqual(getTitleRating.mock.callCount(), 1);
+      assert.strictEqual(persisted['1396']?.criticsScore, 9.5);
+      assert.strictEqual(getImdbRatings.mock.callCount(), 1);
       assert.strictEqual(
         (
           await getRepository(ImdbRatingCache).findOneByOrFail({
@@ -132,7 +166,68 @@ describe('IMDb rating cache', () => {
         'tt0903747'
       );
     } finally {
-      getTitleRating.mock.restore();
+      getImdbRatings.mock.restore();
+    }
+  });
+
+  it('warms unresolved ratings after a media library scan', async () => {
+    await getRepository(Media).save([
+      {
+        tmdbId: 550,
+        mediaType: MediaType.MOVIE,
+        imdbId: 'tt0137523',
+        ratingKey: 'plex-movie',
+      },
+      {
+        tmdbId: 1396,
+        mediaType: MediaType.TV,
+        imdbId: 'tt0903747',
+        ratingKey: 'plex-show',
+      },
+      {
+        tmdbId: 155,
+        mediaType: MediaType.MOVIE,
+        imdbId: 'tt0468569',
+      },
+    ]);
+    const getImdbRatings = mock.method(
+      MdblistRatingsAPI.prototype,
+      'getImdbRatings',
+      async (
+        _mediaType: MediaType.MOVIE | MediaType.TV,
+        tmdbIds: number[]
+      ) => ({
+        ratings: tmdbIds.map((tmdbId) => ({
+          tmdbId,
+          rating: tmdbId === 550 ? 8.8 : 9.5,
+          votes: 100,
+        })),
+        returnedTmdbIds: new Set(tmdbIds),
+        quota: {},
+      })
+    );
+
+    try {
+      await imdbRatingCache.warmLibrary(MediaServerType.PLEX);
+      await imdbRatingCache.processPending();
+
+      const records = await getRepository(ImdbRatingCache).find({
+        order: { tmdbId: 'ASC' },
+      });
+      assert.deepStrictEqual(
+        records.map(({ tmdbId, mediaType, ratingTenths }) => ({
+          tmdbId,
+          mediaType,
+          ratingTenths,
+        })),
+        [
+          { tmdbId: 550, mediaType: MediaType.MOVIE, ratingTenths: 88 },
+          { tmdbId: 1396, mediaType: MediaType.TV, ratingTenths: 95 },
+        ]
+      );
+      assert.strictEqual(getImdbRatings.mock.callCount(), 2);
+    } finally {
+      getImdbRatings.mock.restore();
     }
   });
 
@@ -236,9 +331,9 @@ describe('IMDb rating cache', () => {
       missing: false,
       failureCount: 0,
     });
-    const getMovieRatings = mock.method(
-      IMDBRadarrProxy.prototype,
-      'getMovieRatings',
+    const getImdbRatings = mock.method(
+      MdblistRatingsAPI.prototype,
+      'getImdbRatings',
       async () => {
         throw new Error('provider unavailable');
       }
@@ -253,8 +348,94 @@ describe('IMDb rating cache', () => {
       assert.strictEqual(record.ratingTenths, 88);
       assert.strictEqual(record.voteCount, 2_631_028);
       assert.strictEqual(record.failureCount, 1);
+      assert.ok(record.nextRetryAt);
     } finally {
-      getMovieRatings.mock.restore();
+      getImdbRatings.mock.restore();
+    }
+  });
+
+  it('processes partial batches without overwriting successful cache values', async () => {
+    await getRepository(ImdbRatingCache).save([
+      {
+        tmdbId: 550,
+        mediaType: MediaType.MOVIE,
+        imdbId: 'tt0137523',
+        ratingTenths: 88,
+        voteCount: 100,
+        missing: false,
+        failureCount: 0,
+      },
+      {
+        tmdbId: 155,
+        mediaType: MediaType.MOVIE,
+        imdbId: 'tt0468569',
+        ratingTenths: 90,
+        voteCount: 200,
+        missing: false,
+        failureCount: 0,
+      },
+    ]);
+    const getImdbRatings = mock.method(
+      MdblistRatingsAPI.prototype,
+      'getImdbRatings',
+      async () => ({
+        ratings: [
+          {
+            tmdbId: 550,
+            imdbId: 'tt0137523',
+            rating: 8.9,
+            votes: 300,
+          },
+        ],
+        returnedTmdbIds: new Set([550]),
+        quota: {},
+      })
+    );
+
+    try {
+      await imdbRatingCache.refreshAll();
+      const records = await getRepository(ImdbRatingCache).find({
+        order: { tmdbId: 'ASC' },
+      });
+      assert.strictEqual(
+        records.find((item) => item.tmdbId === 550)?.ratingTenths,
+        89
+      );
+      assert.strictEqual(
+        records.find((item) => item.tmdbId === 155)?.ratingTenths,
+        90
+      );
+      assert.strictEqual(
+        records.find((item) => item.tmdbId === 155)?.voteCount,
+        200
+      );
+    } finally {
+      getImdbRatings.mock.restore();
+    }
+  });
+
+  it('adds and removes provider state fields in SQLite', async () => {
+    const dataSource = new DataSource({ type: 'sqlite', database: ':memory:' });
+    await dataSource.initialize();
+    const queryRunner = dataSource.createQueryRunner();
+    try {
+      await new AddImdbRatingCache1785270000000().up(queryRunner);
+      await new AddMediaTypeToImdbRatingCache1785400000000().up(queryRunner);
+      const migration = new AddImdbRatingProviderState1785544000000();
+      await migration.up(queryRunner);
+      const table = await queryRunner.getTable('imdb_rating_cache');
+      assert.ok(table?.findColumnByName('source'));
+      assert.ok(table?.findColumnByName('nextRetryAt'));
+      await migration.down(queryRunner);
+      assert.equal(
+        (await queryRunner.getTable('imdb_rating_cache'))?.findColumnByName(
+          'nextRetryAt'
+        ),
+        undefined
+      );
+    } finally {
+      await queryRunner.release();
+      await dataSource.destroy();
     }
   });
 });

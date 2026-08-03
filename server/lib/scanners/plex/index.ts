@@ -11,6 +11,7 @@ import type {
 import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
 import cacheManager from '@server/lib/cache';
+import imdbRatingCache from '@server/lib/imdbRatingCache';
 import type {
   MediaIds,
   ProcessableSeason,
@@ -150,6 +151,18 @@ class PlexScanner
           : 'Full Scan Complete',
         'info'
       );
+      void imdbRatingCache
+        .warmLibrary(settings.main.mediaServerType)
+        .catch((error) => {
+          this.log(
+            'Unable to warm IMDb ratings cache after Plex scan',
+            'warn',
+            {
+              errorMessage:
+                error instanceof Error ? error.message : 'Unknown error',
+            }
+          );
+        });
     } catch (e) {
       this.log('Scan interrupted', 'error', {
         errorMessage: e.message,

@@ -36,6 +36,16 @@ Public and official MDBList movie and TV/show lists are supported. Private lists
 
 MDBList requires its API key for official-list item requests and applies account-level request quotas. BladePlex therefore refreshes this shared chart independently of visitors rather than requesting it once per browser session.
 
+## IMDb Ratings Cache
+
+BladePlex uses the configured MDBList API key to retrieve only IMDb-source ratings and IMDb vote counts for both movies and TV shows. Ratings remain stored in the existing persistent database cache and normal page rendering never waits for MDBList: an uncached title is queued for a bounded background batch and displays the existing IMDb link until a rating is available.
+
+The **IMDb Ratings Cache Refresh** job under **Settings → Jobs & Cache** refreshes due ratings weekly by default and can be rescheduled or run manually. Successful cached values are retained when MDBList is unavailable, returns a partial batch, or reports no rating for an individual title. Provider failures use persisted exponential retry timing and an isolated ratings cooldown, while title-level missing results are retried less frequently. Rating requests preserve quota headroom for MDBList Collections.
+
+After a successful Plex or Jellyfin library scan, BladePlex also seeds uncached library titles and warms their ratings asynchronously. Full scans populate fresh installations, while later full or recently-added scans enqueue only new or unresolved titles that are eligible for retry. Rating warming never delays or fails the media-library scan and continues to respect the MDBList quota reserve, retry policy, and ratings circuit breaker.
+
+Batch requests default to 10 titles. Supporter accounts can raise the bounded batch size with `MDBLIST_RATINGS_BATCH_SIZE` (maximum 100) without changing the cache architecture. Clearing **IMDb Ratings (Persistent)** is destructive, requires explicit confirmation, and causes badges to repopulate gradually through background and scheduled work.
+
 ## Application Title
 
 If you aren't a huge fan of the name "Seerr" and would like to display something different to your users, you can customize the application title!
