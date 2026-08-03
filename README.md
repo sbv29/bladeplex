@@ -65,8 +65,6 @@ BladePlex is then available at [http://localhost:5055](http://localhost:5055) by
 
 ## Preview
 
-<img src="./public/preview.jpg" alt="BladePlex application preview" />
-
 ## Migrating from Overseerr/Jellyseerr to BladePlex
 
 BladePlex inherits Seerr's migration support for Overseerr and Jellyseerr installations. Back up your existing configuration and database before migrating.
