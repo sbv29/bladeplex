@@ -73,6 +73,7 @@ volumes:
 Start BladePlex:
 
 ```bash
+docker compose pull
 docker compose up --detach
 ```
 
