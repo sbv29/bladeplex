@@ -178,7 +178,11 @@ const CoreApp: Omit<NextAppComponentType, 'origGetInitialProps'> = ({
     };
   }, [hasPermission, router.pathname]);
 
-  if (router.pathname.match(/(login|setup|resetpassword)/)) {
+  const isAuthPage = /\/(login|setup|resetpassword)(?:\/|$)/.test(
+    router.pathname
+  );
+
+  if (isAuthPage) {
     component = <Component {...pageProps} />;
   } else {
     component = (
@@ -216,7 +220,7 @@ const CoreApp: Omit<NextAppComponentType, 'origGetInitialProps'> = ({
                   applicationTitle={currentSettings.applicationTitle}
                 />
               </Head>
-              <StatusChecker />
+              {!isAuthPage && <StatusChecker />}
               <ServiceWorkerSetup />
               <UserContext initialUser={user}>{component}</UserContext>
               <Toaster
