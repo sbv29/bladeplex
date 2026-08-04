@@ -7,7 +7,7 @@ services:
     build:
       context: .
       args:
-        COMMIT_TAG: ${COMMIT_TAG}
+        COMMIT_TAG: ${COMMIT_TAG:-local}
     ports:
       - '127.0.0.1:${BLADEPLEX_HOST_PORT:-5055}:5055'
     volumes:

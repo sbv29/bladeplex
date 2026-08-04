@@ -32,7 +32,7 @@ RUN if [ -d node_modules/.pnpm ]; then \
 
 FROM base AS build
 
-ARG COMMIT_TAG
+ARG COMMIT_TAG=local
 ENV COMMIT_TAG=${COMMIT_TAG}
 
 RUN \
@@ -52,7 +52,7 @@ RUN rm -rf .next/cache
 
 FROM node:22.22.2-alpine3.23@sha256:8ea2348b068a9544dae7317b4f3aafcdc032df1647bb7d768a05a5cad1a7683f
 ARG SOURCE_DATE_EPOCH
-ARG COMMIT_TAG
+ARG COMMIT_TAG=local
 ENV NODE_ENV=production
 ENV COMMIT_TAG=${COMMIT_TAG}
 

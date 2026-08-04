@@ -13,7 +13,15 @@ let commitTag = 'local';
 
 if (existsSync(COMMIT_TAG_PATH)) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  commitTag = require(COMMIT_TAG_PATH).commitTag;
+  const configuredCommitTag = require(COMMIT_TAG_PATH).commitTag;
+
+  // Docker builds made without COMMIT_TAG contain an empty value in
+  // committag.json. The frontend uses "local" for the same build, so exposing
+  // the empty value here makes StatusChecker think every page load crossed an
+  // application update boundary.
+  if (typeof configuredCommitTag === 'string' && configuredCommitTag.trim()) {
+    commitTag = configuredCommitTag;
+  }
   logger.info(`Commit Tag: ${commitTag}`);
 }
 
