@@ -28,6 +28,7 @@ interface ScheduledJob {
   running?: () => boolean;
   status?: () => unknown;
   cancelFn?: () => void;
+  runNow?: () => void;
 }
 
 export const scheduledJobs: ScheduledJob[] = [];
@@ -263,6 +264,7 @@ export const startJobs = (): void => {
     running: () => imdbRatingCache.status().running,
     status: () => imdbRatingCache.status(),
     cancelFn: () => imdbRatingCache.cancel(),
+    runNow: () => void imdbRatingCache.refreshAll(true),
   });
 
   scheduledJobs.push({

@@ -822,7 +822,11 @@ settingsRoutes.post<{ jobId: string }>('/jobs/:jobId/run', (req, res, next) => {
     return next({ status: 404, message: 'Job not found.' });
   }
 
-  scheduledJob.job.invoke();
+  if (scheduledJob.runNow) {
+    scheduledJob.runNow();
+  } else {
+    scheduledJob.job.invoke();
+  }
 
   return res.status(200).json({
     id: scheduledJob.id,

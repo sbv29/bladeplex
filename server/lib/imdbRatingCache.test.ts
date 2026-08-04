@@ -354,6 +354,48 @@ describe('IMDb rating cache', () => {
     }
   });
 
+  it('force refreshes ratings that are not yet due', async () => {
+    await getRepository(ImdbRatingCache).save({
+      tmdbId: 550,
+      mediaType: MediaType.MOVIE,
+      imdbId: 'tt0137523',
+      ratingTenths: 88,
+      voteCount: 100,
+      missing: false,
+      failureCount: 0,
+      nextRetryAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+    const getImdbRatings = mock.method(
+      MdblistRatingsAPI.prototype,
+      'getImdbRatings',
+      async () => ({
+        ratings: [
+          {
+            tmdbId: 550,
+            imdbId: 'tt0137523',
+            rating: 8.9,
+            votes: 300,
+          },
+        ],
+        returnedTmdbIds: new Set([550]),
+        quota: {},
+      })
+    );
+
+    try {
+      await imdbRatingCache.refreshAll(true);
+      const record = await getRepository(ImdbRatingCache).findOneByOrFail({
+        tmdbId: 550,
+      });
+
+      assert.strictEqual(getImdbRatings.mock.callCount(), 1);
+      assert.strictEqual(record.ratingTenths, 89);
+      assert.strictEqual(record.voteCount, 300);
+    } finally {
+      getImdbRatings.mock.restore();
+    }
+  });
+
   it('processes partial batches without overwriting successful cache values', async () => {
     await getRepository(ImdbRatingCache).save([
       {

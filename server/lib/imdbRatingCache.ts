@@ -236,23 +236,31 @@ class ImdbRatingCacheService {
     });
   }
 
-  public async refreshAll(): Promise<void> {
+  public async refreshAll(force = false): Promise<void> {
     if (this.running) return;
-    const repository = getRepository(ImdbRatingCache);
-    const now = new Date();
-    const records = await repository.find({
-      where: [{ nextRetryAt: IsNull() }, { nextRetryAt: LessThanOrEqual(now) }],
-      order: { nextRetryAt: 'ASC', updatedAt: 'ASC' },
-    });
-
-    this.resetRun(records.length);
     this.running = true;
-    logger.info(`Refreshing ${records.length} due cached IMDb ratings`, {
-      label: 'IMDb Ratings Cache',
-      provider: RATING_SOURCE,
-    });
 
     try {
+      const repository = getRepository(ImdbRatingCache);
+      const now = new Date();
+      const records = await repository.find({
+        where: force
+          ? undefined
+          : [{ nextRetryAt: IsNull() }, { nextRetryAt: LessThanOrEqual(now) }],
+        order: { nextRetryAt: 'ASC', updatedAt: 'ASC' },
+      });
+
+      this.resetRun(records.length);
+      logger.info(
+        `Refreshing ${records.length} ${
+          force ? 'cached' : 'due cached'
+        } IMDb ratings`,
+        {
+          label: 'IMDb Ratings Cache',
+          provider: RATING_SOURCE,
+        }
+      );
+
       for (const mediaType of [MediaType.MOVIE, MediaType.TV] as const) {
         const typed = records.filter(
           (record) => record.mediaType === mediaType
