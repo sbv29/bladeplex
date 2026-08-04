@@ -53,15 +53,55 @@ More improvements are planned. Check the [issue tracker](/../../issues) for know
 
 BladePlex follows Seerr's core deployment and configuration model. The upstream [Seerr documentation](https://docs.seerr.dev/getting-started/) is a useful reference for prerequisites, media-server setup, Sonarr/Radarr integration, permissions, and notifications.
 
-To build this repository with Docker Compose:
+Create a folder containing this `compose.yaml`:
+
+```yaml
+services:
+  bladeplex:
+    image: ghcr.io/sbv29/bladeplex:latest
+    container_name: bladeplex
+    ports:
+      - '127.0.0.1:5059:5055'
+    volumes:
+      - bladeplex-config:/app/config
+    restart: unless-stopped
+
+volumes:
+  bladeplex-config:
+```
+
+Start BladePlex:
+
+```bash
+docker compose up --detach
+```
+
+BladePlex is then available at [http://localhost:5059](http://localhost:5059). The named `bladeplex-config` volume preserves settings and the database when the container is replaced.
+
+### Updating
+
+Pull the newest tested `main` image and let Compose replace the container:
+
+```bash
+docker compose pull
+docker compose up --detach
+```
+
+Do not delete the `bladeplex-config` volume during an update. To install or roll back to an exact build, replace `latest` with a full Git commit SHA: `ghcr.io/sbv29/bladeplex:<full-commit-sha>`.
+
+### Building from source
+
+Published images are recommended for normal installations. Contributors and offline deployments can still build locally:
 
 ```bash
 git clone https://github.com/sbv29/bladeplex.git
 cd bladeplex
-docker compose up --detach --build
+docker compose -f docker-compose.yml -f compose.build.yaml up --detach --build
 ```
 
-BladePlex is then available at [http://localhost:5055](http://localhost:5055) by default. Persistent application data is stored through the `config` mount defined in [`docker-compose.yml`](./docker-compose.yml); review that file before deploying to production.
+The repository Compose configuration defaults to [http://localhost:5055](http://localhost:5055) and stores persistent data at `/opt/stacks/seerr/config`. Set `BLADEPLEX_HOST_PORT` and `BLADEPLEX_CONFIG_PATH` in a `.env` file when different values are required.
+
+See [the BladePlex Docker guide](./docs/getting-started/bladeplex-docker.md) for Windows, Linux, upgrades, pinned versions, and production deployment.
 
 ## Preview
 

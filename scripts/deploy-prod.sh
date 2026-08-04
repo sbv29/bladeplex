@@ -6,7 +6,7 @@ readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 readonly COMPOSE_FILE="${REPO_DIR}/docker-compose.yml"
 readonly CONTAINER_NAME="bladeplex"
-readonly IMAGE_NAME="bladeplex:latest"
+readonly IMAGE_REPOSITORY="ghcr.io/sbv29/bladeplex"
 readonly CONFIG_PATH="/opt/stacks/seerr/config"
 readonly HTTP_URL="http://127.0.0.1:5055"
 readonly PRODUCTION_PORT_BINDING="127.0.0.1:5055:5055"
@@ -14,9 +14,12 @@ readonly EXISTING_ROLLBACK_CONTAINER="bladeplex-old"
 
 skip_fetch=false
 allow_existing_rollback=false
+local_build=false
+requested_commit=""
 deployment_started=false
 rollback_image=""
 rollback_tag=""
+image_name="${IMAGE_REPOSITORY}:latest"
 
 log() {
   printf '[bladeplex deploy] %s\n' "$*"
@@ -44,7 +47,7 @@ compose_production() {
   COMMIT_TAG="${commit_tag:-}" \
   BLADEPLEX_PROJECT_NAME="bladeplex" \
   BLADEPLEX_CONTAINER_NAME="${CONTAINER_NAME}" \
-  BLADEPLEX_IMAGE="${IMAGE_NAME}" \
+  BLADEPLEX_IMAGE="${image_name}" \
   BLADEPLEX_HOST_PORT="5055" \
   BLADEPLEX_CONFIG_PATH="${CONFIG_PATH}" \
     docker compose -f "${COMPOSE_FILE}" -p bladeplex "$@"
@@ -136,10 +139,10 @@ validate_deployment() {
   state="$(docker inspect --format '{{.State.Status}}' "${CONTAINER_NAME}")"
   [[ "${state}" == "running" ]] || die "Container state is '${state}', not running."
 
-  expected_image_id="$(docker image inspect "${IMAGE_NAME}" --format '{{.Id}}')"
+  expected_image_id="$(docker image inspect "${image_name}" --format '{{.Id}}')"
   running_image_id="$(docker inspect --format '{{.Image}}' "${CONTAINER_NAME}")"
   [[ "${running_image_id}" == "${expected_image_id}" ]] ||
-    die "Running container does not use ${IMAGE_NAME}."
+    die "Running container does not use ${image_name}."
 
   runtime_tag="$(docker inspect "${CONTAINER_NAME}" \
     --format '{{range .Config.Env}}{{println .}}{{end}}' |
@@ -197,10 +200,24 @@ while (($# > 0)); do
   case "$1" in
     --skip-fetch) skip_fetch=true ;;
     --allow-existing-rollback) allow_existing_rollback=true ;;
-    *) die "Usage: $0 [--skip-fetch] [--allow-existing-rollback]" ;;
+    --local-build) local_build=true ;;
+    --help)
+      printf 'Usage: %s [COMMIT_SHA] [--skip-fetch] [--allow-existing-rollback]\n' "$0"
+      printf '       %s --local-build [--skip-fetch] [--allow-existing-rollback]\n' "$0"
+      exit 0
+      ;;
+    --*) die "Unknown option: $1" ;;
+    *)
+      [[ -z "${requested_commit}" ]] || die "Specify only one commit SHA."
+      requested_commit="$1"
+      ;;
   esac
   shift
 done
+
+if [[ "${local_build}" == true && -n "${requested_commit}" ]]; then
+  die "A commit SHA cannot be combined with --local-build."
+fi
 
 cd "${REPO_DIR}"
 
@@ -211,9 +228,6 @@ docker compose version >/dev/null 2>&1 || die "Docker Compose v2 is not availabl
 docker info >/dev/null 2>&1 || die "The Docker daemon is unavailable."
 validate_production_port_binding
 
-[[ "$(git branch --show-current)" == "main" ]] || die "Production deployments require branch 'main'."
-[[ -z "$(git status --porcelain)" ]] || die "The Git working tree must be clean."
-
 if [[ "${skip_fetch}" == false ]]; then
   log "Fetching origin/main."
   git fetch origin main
@@ -222,17 +236,39 @@ else
 fi
 
 git show-ref --verify --quiet refs/remotes/origin/main || die "origin/main is unavailable."
-git merge-base --is-ancestor origin/main HEAD ||
-  die "Local main is behind or has diverged from origin/main. Update it before deploying."
 
-full_hash="$(git rev-parse HEAD)"
-short_hash="$(git rev-parse --short=8 HEAD)"
-commit_tag="${short_hash}-main"
+if [[ "${local_build}" == true ]]; then
+  [[ "$(git branch --show-current)" == "main" ]] || die "Local production builds require branch 'main'."
+  [[ -z "$(git status --porcelain)" ]] || die "The Git working tree must be clean."
+  full_hash="$(git rev-parse HEAD)"
+  [[ "${full_hash}" == "$(git rev-parse origin/main)" ]] ||
+    die "Local main must exactly match origin/main before deploying."
+  short_hash="$(git rev-parse --short=8 HEAD)"
+  commit_tag="${short_hash}-main"
+  image_name="bladeplex:latest"
+else
+  full_hash="${requested_commit:-$(git rev-parse origin/main)}"
+  [[ "${full_hash}" =~ ^[0-9a-fA-F]{40}$ ]] ||
+    die "Production image tags require a full 40-character commit SHA."
+  git cat-file -e "${full_hash}^{commit}" 2>/dev/null ||
+    die "Commit is not available locally: ${full_hash}"
+  git merge-base --is-ancestor "${full_hash}" origin/main ||
+    die "Commit is not part of origin/main: ${full_hash}"
+  commit_tag="${full_hash}"
+  image_name="${IMAGE_REPOSITORY}:${full_hash}"
+fi
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 
-log "Building ${IMAGE_NAME} from ${full_hash} with COMMIT_TAG=${commit_tag}."
-compose_production build bladeplex
-validate_image_metadata "${IMAGE_NAME}" "${commit_tag}"
+if [[ "${local_build}" == true ]]; then
+  log "Building fallback image ${image_name} from ${full_hash} with COMMIT_TAG=${commit_tag}."
+  COMMIT_TAG="${commit_tag}" BLADEPLEX_IMAGE="${image_name}" \
+    docker compose -f "${COMPOSE_FILE}" -f "${REPO_DIR}/compose.build.yaml" \
+    -p bladeplex build bladeplex
+else
+  log "Pulling immutable production image ${image_name}."
+  docker pull "${image_name}"
+fi
+validate_image_metadata "${image_name}" "${commit_tag}"
 
 if container_exists "${EXISTING_ROLLBACK_CONTAINER}"; then
   warn "Existing rollback container '${EXISTING_ROLLBACK_CONTAINER}' was found and will not be modified."
@@ -296,7 +332,7 @@ deployment_started=false
 log "Deployment succeeded."
 printf '  Commit:       %s\n' "${full_hash}"
 printf '  COMMIT_TAG:   %s\n' "${commit_tag}"
-printf '  Image:        %s\n' "${IMAGE_NAME}"
+printf '  Image:        %s\n' "${image_name}"
 printf '  Container:    %s\n' "${CONTAINER_NAME}"
 printf '  URL:          %s\n' "${HTTP_URL}"
 printf '  Rollback tag: %s\n' "${rollback_tag:-not available}"

@@ -1,0 +1,7 @@
+services:
+  bladeplex:
+    image: ${BLADEPLEX_IMAGE:-bladeplex:local}
+    build:
+      context: .
+      args:
+        COMMIT_TAG: ${COMMIT_TAG:-local}
