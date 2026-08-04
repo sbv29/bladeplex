@@ -46,6 +46,7 @@ BladePlex builds on the excellent foundation provided by [Seerr](https://github.
 - **Graphite visual design:** A darker BladePlex theme with refined Discover headings and branded browser/PWA presentation.
 - **Configurable video links:** Use YouTube or a compatible self-hosted YouTube frontend for video links.
 - **Deployment safeguards:** Production deployment scripts validate commit metadata and container health while preserving a rollback path.
+- **PWA Integration:** Added PWA standard install guides for IOS and Android with 7 day reminder timers.
 
 More improvements are planned. Check the [issue tracker](/../../issues) for known issues and feature ideas.
 
