@@ -54,6 +54,7 @@ More improvements are planned. Check the [issue tracker](/../../issues) for know
 BladePlex follows Seerr's core deployment and configuration model. The upstream [Seerr documentation](https://docs.seerr.dev/getting-started/) is a useful reference for prerequisites, media-server setup, Sonarr/Radarr integration, permissions, and notifications.
 
 Create a folder containing this `compose.yaml`:
+Update the first port listed as needed (leave the trailing :5055)
 
 ```yaml
 services:
