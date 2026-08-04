@@ -189,13 +189,13 @@ const loginAs = async (email: string) => {
 };
 
 describe('mobile announcement settings', () => {
-  it('provides the enabled green default message', () => {
+  it('provides a disabled green default message', () => {
     const defaults = new Settings().main;
 
-    assert.equal(defaults.mobileAnnouncementEnabled, true);
+    assert.equal(defaults.mobileAnnouncementEnabled, false);
     assert.equal(defaults.mobileAnnouncementColor, 'green');
     assert.equal(defaults.mobileAnnouncementDurationDays, 7);
-    assert.ok(defaults.mobileAnnouncementExpiresAt);
+    assert.equal(defaults.mobileAnnouncementExpiresAt, null);
     assert.equal(
       defaults.mobileAnnouncementMessage,
       'This is a new release, text me if there are issues'

@@ -222,7 +222,7 @@ const SettingsMain = () => {
             cacheImages: data?.cacheImages,
             youtubeUrl: data?.youtubeUrl,
             versionCheck: data?.versionCheck,
-            mobileAnnouncementEnabled: data?.mobileAnnouncementEnabled ?? true,
+            mobileAnnouncementEnabled: data?.mobileAnnouncementEnabled ?? false,
             mobileAnnouncementMessage:
               data?.mobileAnnouncementMessage ??
               'This is a new release, text me if there are issues',

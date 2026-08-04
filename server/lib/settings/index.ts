@@ -462,15 +462,13 @@ class Settings {
         locale: 'en',
         youtubeUrl: '',
         versionCheck: true,
-        mobileAnnouncementEnabled: true,
+        mobileAnnouncementEnabled: false,
         mobileAnnouncementMessage:
           'This is a new release, text me if there are issues',
         mobileAnnouncementColor: 'green',
         mobileAnnouncementRevision: 1,
         mobileAnnouncementDurationDays: 7,
-        mobileAnnouncementExpiresAt: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000
-        ).toISOString(),
+        mobileAnnouncementExpiresAt: null,
       },
       plex: {
         name: '',

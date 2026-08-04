@@ -267,7 +267,7 @@ CoreApp.getInitialProps = async (initialProps) => {
     youtubeUrl: '',
     versionCheck: true,
     plexClientIdentifier: '',
-    mobileAnnouncementEnabled: true,
+    mobileAnnouncementEnabled: false,
     mobileAnnouncementMessage:
       'This is a new release, text me if there are issues',
     mobileAnnouncementColor: 'green',
