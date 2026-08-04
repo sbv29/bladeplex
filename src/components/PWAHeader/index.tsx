@@ -156,6 +156,7 @@ const PWAHeader = ({ applicationTitle = 'BladePlex' }: PWAHeaderProps) => {
         name="apple-mobile-web-app-status-bar-style"
         content="black-translucent"
       />
+      <meta name="apple-mobile-web-app-capable" content="yes" />
       <link
         rel="manifest"
         href="/site.webmanifest"

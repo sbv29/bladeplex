@@ -3,8 +3,10 @@ import VersionStatus from '@app/components/Layout/VersionStatus';
 import useClickOutside from '@app/hooks/useClickOutside';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
+import type { PwaInstallMode } from '@app/utils/pwaInstall';
 import { Transition } from '@headlessui/react';
 import {
+  ArrowDownTrayIcon,
   ClockIcon,
   CogIcon,
   ExclamationTriangleIcon,
@@ -30,6 +32,7 @@ export const menuMessages = defineMessages('components.Layout.Sidebar', {
   issues: 'Issues',
   users: 'Users',
   settings: 'Settings',
+  installBladePlex: 'Install BladePlex',
 });
 
 interface SidebarProps {
@@ -39,6 +42,8 @@ interface SidebarProps {
   openIssuesCount: number;
   revalidateIssueCount: () => void;
   revalidateRequestsCount: () => void;
+  pwaInstallMode: PwaInstallMode;
+  onInstallPwa: () => void;
 }
 
 interface SidebarLinkProps {
@@ -125,6 +130,8 @@ const Sidebar = ({
   openIssuesCount,
   revalidateIssueCount,
   revalidateRequestsCount,
+  pwaInstallMode,
+  onInstallPwa,
 }: SidebarProps) => {
   const navRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -236,6 +243,20 @@ const Sidebar = ({
                           </Link>
                         );
                       })}
+                      {pwaInstallMode !== 'unavailable' && (
+                        <button
+                          className="flex w-full items-center rounded-md px-2 py-2 text-base font-medium leading-6 text-white transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:outline-none"
+                          data-testid="sidebar-install-pwa-mobile"
+                          onClick={() => {
+                            onInstallPwa();
+                            setClosed();
+                          }}
+                          type="button"
+                        >
+                          <ArrowDownTrayIcon className="mr-3 h-6 w-6" />
+                          {intl.formatMessage(menuMessages.installBladePlex)}
+                        </button>
+                      )}
                     </nav>
                     {hasPermission(Permission.ADMIN) && (
                       <div className="px-2">
@@ -327,6 +348,17 @@ const Sidebar = ({
                     </Link>
                   );
                 })}
+                {pwaInstallMode !== 'unavailable' && (
+                  <button
+                    className="group flex w-full items-center rounded-md px-2 py-2 text-lg font-medium leading-6 text-white transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:outline-none"
+                    data-testid="sidebar-install-pwa"
+                    onClick={onInstallPwa}
+                    type="button"
+                  >
+                    <ArrowDownTrayIcon className="mr-3 h-6 w-6" />
+                    {intl.formatMessage(menuMessages.installBladePlex)}
+                  </button>
+                )}
               </nav>
               {hasPermission(Permission.ADMIN) && (
                 <div className="px-2">

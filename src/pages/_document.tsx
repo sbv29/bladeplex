@@ -15,7 +15,13 @@ class MyDocument extends Document {
   render(): JSX.Element {
     return (
       <Html>
-        <Head />
+        <Head>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `window.addEventListener('beforeinstallprompt',function(event){event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();window.bladeplexPwaInstallPrompt=event;window.dispatchEvent(new Event('bladeplex-beforeinstallprompt'));});`,
+            }}
+          />
+        </Head>
         <body>
           <Main />
           <NextScript />

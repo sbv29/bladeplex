@@ -3,8 +3,10 @@ import MobileAnnouncement from '@app/components/Layout/MobileAnnouncement';
 import { menuMessages } from '@app/components/Layout/Sidebar';
 import useClickOutside from '@app/hooks/useClickOutside';
 import { Permission, useUser } from '@app/hooks/useUser';
+import type { PwaInstallMode } from '@app/utils/pwaInstall';
 import { Transition } from '@headlessui/react';
 import {
+  ArrowDownTrayIcon,
   ClockIcon,
   CogIcon,
   EllipsisHorizontalIcon,
@@ -36,6 +38,8 @@ interface MobileMenuProps {
   openIssuesCount: number;
   revalidateIssueCount: () => void;
   revalidateRequestsCount: () => void;
+  pwaInstallMode: PwaInstallMode;
+  onInstallPwa: () => void;
 }
 
 interface MenuLink {
@@ -55,6 +59,8 @@ const MobileMenu = ({
   openIssuesCount,
   revalidateIssueCount,
   revalidateRequestsCount,
+  pwaInstallMode,
+  onInstallPwa,
 }: MobileMenuProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const intl = useIntl();
@@ -225,6 +231,22 @@ const MobileMenu = ({
             </Link>
           );
         })}
+        {pwaInstallMode !== 'unavailable' && (
+          <button
+            className="flex items-center text-left"
+            data-testid="mobile-menu-install-pwa"
+            onClick={() => {
+              onInstallPwa();
+              setIsOpen(false);
+            }}
+            type="button"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            <span className="ml-2">
+              {intl.formatMessage(menuMessages.installBladePlex)}
+            </span>
+          </button>
+        )}
       </Transition>
       <MobileAnnouncement />
       <div

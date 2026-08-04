@@ -1,7 +1,9 @@
 {
   "name": "BladePlex",
   "short_name": "BladePlex",
-  "start_url": "./",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "./android-chrome-192x192.png",
@@ -28,8 +30,8 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#1f2937",
-  "background_color": "#1f2937",
+  "theme_color": "#0b0b0b",
+  "background_color": "#0b0b0b",
   "display": "standalone",
   "shortcuts": [
     {

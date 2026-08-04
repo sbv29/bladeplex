@@ -7,23 +7,36 @@ import UserWarnings from '@app/components/Layout/UserWarnings';
 import useLocale from '@app/hooks/useLocale';
 import useSettings from '@app/hooks/useSettings';
 import { useUser } from '@app/hooks/useUser';
+import type { PwaInstallMode } from '@app/utils/pwaInstall';
 import { ArrowLeftIcon, Bars3BottomLeftIcon } from '@heroicons/react/24/solid';
 import type { AvailableLocale } from '@server/types/languages';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 
 type LayoutProps = {
   children: React.ReactNode;
 };
 
+const PwaInstallMenuItem = dynamic(
+  () => import('@app/components/PwaInstallMenuItem'),
+  { ssr: false }
+);
+
 const Layout = ({ children }: LayoutProps) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [pwaInstallMode, setPwaInstallMode] =
+    useState<PwaInstallMode>('unavailable');
+  const [pwaInstallRequest, setPwaInstallRequest] = useState(0);
   const { user } = useUser();
   const router = useRouter();
   const { currentSettings } = useSettings();
   const { setLocale } = useLocale();
+  const requestPwaInstall = useCallback(() => {
+    setPwaInstallRequest((value) => value + 1);
+  }, []);
   const { data: requestResponse, mutate: revalidateRequestsCount } = useSWR(
     '/api/v1/request/count',
     {
@@ -65,6 +78,10 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="flex h-full min-h-full min-w-0 bg-gray-900">
+      <PwaInstallMenuItem
+        installRequest={pwaInstallRequest}
+        onModeChange={setPwaInstallMode}
+      />
       <div className="pwa-only fixed inset-0 z-20 h-1 w-full border-gray-700 md:border-t" />
       <div className="absolute top-0 h-64 w-full bg-gradient-to-bl from-gray-800 to-gray-900">
         <div className="relative inset-0 h-full w-full bg-gradient-to-t from-gray-900 to-transparent" />
@@ -76,6 +93,8 @@ const Layout = ({ children }: LayoutProps) => {
         openIssuesCount={issueResponse?.open ?? 0}
         revalidateIssueCount={() => revalidateIssueCount()}
         revalidateRequestsCount={() => revalidateRequestsCount()}
+        pwaInstallMode={pwaInstallMode}
+        onInstallPwa={requestPwaInstall}
       />
       <div className="sm:hidden">
         <MobileMenu
@@ -83,6 +102,8 @@ const Layout = ({ children }: LayoutProps) => {
           openIssuesCount={issueResponse?.open ?? 0}
           revalidateIssueCount={() => revalidateIssueCount()}
           revalidateRequestsCount={() => revalidateRequestsCount()}
+          pwaInstallMode={pwaInstallMode}
+          onInstallPwa={requestPwaInstall}
         />
       </div>
 
@@ -118,7 +139,10 @@ const Layout = ({ children }: LayoutProps) => {
             </button>
             <SearchInput />
             <div className="flex items-center">
-              <UserDropdown />
+              <UserDropdown
+                pwaInstallMode={pwaInstallMode}
+                onInstallPwa={requestPwaInstall}
+              />
             </div>
           </div>
         </div>

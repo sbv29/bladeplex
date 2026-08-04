@@ -1,4 +1,6 @@
 {
+  "components.Layout.UserDropdown.installBladePlex": "Install BladePlex",
+  "components.Layout.Sidebar.installBladePlex": "Install BladePlex",
   "component.BlocklistBlock.blocklistdate": "Blocklisted date",
   "component.BlocklistBlock.blocklistedby": "Blocklisted By",
   "component.BlocklistModal.blocklisting": "Blocklisting",
