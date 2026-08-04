@@ -18,22 +18,7 @@
 
 BladePlex builds on the excellent foundation provided by [Seerr](https://github.com/seerr-team/seerr), retaining its request-management features while adding a more personalized discovery experience and BladePlex-specific enhancements.
 
-## Current Features
-
-- Full Jellyfin, Emby, and Plex integration, including authentication, user import, and user management.
-- Support for **PostgreSQL** and **SQLite** databases.
-- Support for movie, TV, and mixed media libraries.
-- Easy integration with Sonarr and Radarr.
-- Jellyfin, Emby, and Plex library scans to track media that is already available.
-- A customizable request system for movies and individual TV seasons.
-- A straightforward request-management interface for approving and declining requests.
-- Granular user permissions and request quotas.
-- Support for numerous notification agents.
-- Mobile-friendly layouts for discovering, requesting, and managing media on the go.
-- Watchlist and blocklist support.
-- Progressive Web App support for installation on compatible desktop and mobile devices.
-
-## BladePlex Features
+## BladePlex Specific Features & Enhancements
 
 - **Native MDBList discovery:** Add public or official MDBList movie and TV lists as native Discover sliders with linked full-page grids.
 - **Ranked, efficient list browsing:** MDBList ordering is preserved while results are hydrated through TMDb, paginated locally, and cached to reduce upstream requests.
@@ -47,6 +32,21 @@ BladePlex builds on the excellent foundation provided by [Seerr](https://github.
 - **Configurable video links:** Use YouTube or a compatible self-hosted YouTube frontend for video links.
 - **Deployment safeguards:** Production deployment scripts validate commit metadata and container health while preserving a rollback path.
 - **PWA Integration:** Added PWA standard install guides for IOS and Android with 7 day reminder timers.
+
+## Standard Seer  Features
+
+- Full Jellyfin, Emby, and Plex integration, including authentication, user import, and user management.
+- Support for **PostgreSQL** and **SQLite** databases.
+- Support for movie, TV, and mixed media libraries.
+- Easy integration with Sonarr and Radarr.
+- Jellyfin, Emby, and Plex library scans to track media that is already available.
+- A customizable request system for movies and individual TV seasons.
+- A straightforward request-management interface for approving and declining requests.
+- Granular user permissions and request quotas.
+- Support for numerous notification agents.
+- Mobile-friendly layouts for discovering, requesting, and managing media on the go.
+- Watchlist and blocklist support.
+- Progressive Web App support for installation on compatible desktop and mobile devices.
 
 More improvements are planned. Check the [issue tracker](/../../issues) for known issues and feature ideas.
 
