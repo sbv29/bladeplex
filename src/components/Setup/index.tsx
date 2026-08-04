@@ -19,10 +19,12 @@ import type { Library } from '@server/lib/settings';
 import axios from 'axios';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import useSWR, { mutate } from 'swr';
 import SetupLogin from './SetupLogin';
+import SetupMdblist from './SetupMdblist';
+import SetupMdblistItems from './SetupMdblistItems';
 
 const messages = defineMessages('components.Setup', {
   welcome: 'Welcome to Seerr',
@@ -31,38 +33,39 @@ const messages = defineMessages('components.Setup', {
   configplex: 'Configure Plex',
   configemby: 'Configure Emby',
   setup: 'Setup',
-  finish: 'Finish Setup',
-  finishing: 'Finishing…',
+  back: 'Back',
   continue: 'Continue',
-  servertype: 'Choose Server Type',
+  servertype: 'Server Type',
   signin: 'Sign In',
-  configuremediaserver: 'Configure Media Server',
-  configureservices: 'Configure Services',
+  configuremediaserver: 'Media Server',
+  configureservices: 'Services',
+  configuremdblist: 'MDBList',
+  configurelists: 'Lists',
+  configurecollections: 'Collections',
   librarieserror:
     'Validation failed. Please toggle the libraries again to continue.',
 });
 
 const Setup = () => {
   const intl = useIntl();
-  const [isUpdating, setIsUpdating] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [mediaServerSettingsComplete, setMediaServerSettingsComplete] =
     useState(false);
   const [mediaServerType, setMediaServerType] = useState(
     MediaServerType.NOT_CONFIGURED
   );
+  const [mdblistConfigured, setMdblistConfigured] = useState(false);
+  const restoredConfiguredStep = useRef(false);
   const router = useRouter();
   const { locale } = useLocale();
   const settings = useSettings();
   const toasts = useToasts();
 
   const finishSetup = async () => {
-    setIsUpdating(true);
     const response = await axios.post<{ initialized: boolean }>(
       '/api/v1/settings/initialize'
     );
 
-    setIsUpdating(false);
     if (response.data.initialized) {
       await axios.post('/api/v1/settings/main', { locale });
       mutate('/api/v1/settings/public');
@@ -112,9 +115,11 @@ const Setup = () => {
     }
 
     if (
+      !restoredConfiguredStep.current &&
       settings.currentSettings.mediaServerType !==
-      MediaServerType.NOT_CONFIGURED
+        MediaServerType.NOT_CONFIGURED
     ) {
+      restoredConfiguredStep.current = true;
       setMediaServerType(settings.currentSettings.mediaServerType);
       if (currentStep < 3) {
         setCurrentStep(3);
@@ -169,7 +174,7 @@ const Setup = () => {
         <AppDataWarning />
         <nav className="relative z-50">
           <ul
-            className="divide-y divide-gray-600 rounded-md border border-gray-600 bg-gray-800/50 md:flex md:divide-y-0"
+            className="divide-y divide-gray-600 rounded-md border border-gray-600 bg-gray-800/50 md:grid md:grid-cols-7 md:divide-y-0"
             style={{ backdropFilter: 'blur(5px)' }}
           >
             <SetupSteps
@@ -194,6 +199,24 @@ const Setup = () => {
               stepNumber={4}
               description={intl.formatMessage(messages.configureservices)}
               active={currentStep === 4}
+              completed={currentStep > 4}
+            />
+            <SetupSteps
+              stepNumber={5}
+              description={intl.formatMessage(messages.configuremdblist)}
+              active={currentStep === 5}
+              completed={currentStep > 5}
+            />
+            <SetupSteps
+              stepNumber={6}
+              description={intl.formatMessage(messages.configurelists)}
+              active={currentStep === 6}
+              completed={currentStep > 6}
+            />
+            <SetupSteps
+              stepNumber={7}
+              description={intl.formatMessage(messages.configurecollections)}
+              active={currentStep === 7}
               isLastStep
             />
           </ul>
@@ -207,7 +230,7 @@ const Setup = () => {
               <div className="mb-2 flex justify-center pb-6 text-sm">
                 {intl.formatMessage(messages.subtitle)}
               </div>
-              <div className="grid grid-cols-3">
+              <div className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-3">
                 <div className="flex flex-col divide-y divide-gray-600 rounded-l border border-gray-600 py-2">
                   <div className="mb-2 flex flex-1 items-center justify-center px-2 py-2">
                     <JellyfinLogo className="h-10" />
@@ -216,9 +239,12 @@ const Setup = () => {
                     <button
                       onClick={() => {
                         setMediaServerType(MediaServerType.JELLYFIN);
-                        setCurrentStep(2);
                       }}
-                      className="button-md relative z-10 inline-flex h-full w-full items-center justify-center rounded-md border border-gray-600 bg-transparent px-4 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out hover:z-20 hover:border-gray-200 focus:z-20 focus:border-gray-100 focus:outline-none active:border-gray-100"
+                      className={`button-md relative z-10 inline-flex h-full w-full items-center justify-center rounded-md border px-4 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out hover:z-20 hover:border-gray-200 focus:z-20 focus:border-gray-100 focus:outline-none active:border-gray-100 ${
+                        mediaServerType === MediaServerType.JELLYFIN
+                          ? 'border-indigo-500 bg-indigo-600/30'
+                          : 'border-gray-600 bg-transparent'
+                      }`}
                     >
                       {intl.formatMessage(messages.configjellyfin)}
                     </button>
@@ -232,9 +258,12 @@ const Setup = () => {
                     <button
                       onClick={() => {
                         setMediaServerType(MediaServerType.PLEX);
-                        setCurrentStep(2);
                       }}
-                      className="button-md relative z-10 inline-flex h-full w-full items-center justify-center rounded-md border border-gray-600 bg-transparent px-4 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out hover:z-20 hover:border-gray-200 focus:z-20 focus:border-gray-100 focus:outline-none active:border-gray-100"
+                      className={`button-md relative z-10 inline-flex h-full w-full items-center justify-center rounded-md border px-4 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out hover:z-20 hover:border-gray-200 focus:z-20 focus:border-gray-100 focus:outline-none active:border-gray-100 ${
+                        mediaServerType === MediaServerType.PLEX
+                          ? 'border-indigo-500 bg-indigo-600/30'
+                          : 'border-gray-600 bg-transparent'
+                      }`}
                     >
                       {intl.formatMessage(messages.configplex)}
                     </button>
@@ -248,13 +277,29 @@ const Setup = () => {
                     <button
                       onClick={() => {
                         setMediaServerType(MediaServerType.EMBY);
-                        setCurrentStep(2);
                       }}
-                      className="button-md relative z-10 inline-flex h-full w-full items-center justify-center rounded-md border border-gray-600 bg-transparent px-4 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out hover:z-20 hover:border-gray-200 focus:z-20 focus:border-gray-100 focus:outline-none active:border-gray-100"
+                      className={`button-md relative z-10 inline-flex h-full w-full items-center justify-center rounded-md border px-4 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out hover:z-20 hover:border-gray-200 focus:z-20 focus:border-gray-100 focus:outline-none active:border-gray-100 ${
+                        mediaServerType === MediaServerType.EMBY
+                          ? 'border-indigo-500 bg-indigo-600/30'
+                          : 'border-gray-600 bg-transparent'
+                      }`}
                     >
                       {intl.formatMessage(messages.configemby)}
                     </button>
                   </div>
+                </div>
+              </div>
+              <div className="actions w-full">
+                <div className="flex justify-end">
+                  <Button
+                    buttonType="primary"
+                    disabled={
+                      mediaServerType === MediaServerType.NOT_CONFIGURED
+                    }
+                    onClick={() => setCurrentStep(2)}
+                  >
+                    {intl.formatMessage(messages.continue)}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -277,8 +322,14 @@ const Setup = () => {
                 <SettingsJellyfin isSetupSettings onComplete={handleComplete} />
               )}
               <div className="actions">
-                <div className="flex justify-end">
-                  <span className="ml-3 inline-flex rounded-md shadow-sm">
+                <div className="flex justify-between gap-3">
+                  <Button
+                    buttonType="default"
+                    onClick={() => setCurrentStep(2)}
+                  >
+                    {intl.formatMessage(messages.back)}
+                  </Button>
+                  <span className="inline-flex rounded-md shadow-sm">
                     <Button
                       buttonType="primary"
                       disabled={!mediaServerSettingsComplete}
@@ -295,21 +346,52 @@ const Setup = () => {
             <div>
               <SettingsServices />
               <div className="actions">
-                <div className="flex justify-end">
-                  <span className="ml-3 inline-flex rounded-md shadow-sm">
+                <div className="flex justify-between gap-3">
+                  <Button
+                    buttonType="default"
+                    onClick={() => setCurrentStep(3)}
+                  >
+                    {intl.formatMessage(messages.back)}
+                  </Button>
+                  <span className="inline-flex rounded-md shadow-sm">
                     <Button
                       buttonType="primary"
-                      onClick={() => finishSetup()}
-                      disabled={isUpdating}
+                      onClick={() => setCurrentStep(5)}
                     >
-                      {isUpdating
-                        ? intl.formatMessage(messages.finishing)
-                        : intl.formatMessage(messages.finish)}
+                      {intl.formatMessage(messages.continue)}
                     </Button>
                   </span>
                 </div>
               </div>
             </div>
+          )}
+          {currentStep === 5 && (
+            <SetupMdblist
+              onBack={() => setCurrentStep(4)}
+              onContinue={(configured) => {
+                setMdblistConfigured(configured);
+                setCurrentStep(6);
+              }}
+            />
+          )}
+          {currentStep === 6 && (
+            <SetupMdblistItems
+              key="custom-lists"
+              type="list"
+              configured={mdblistConfigured}
+              onBack={() => setCurrentStep(5)}
+              onContinue={() => setCurrentStep(7)}
+            />
+          )}
+          {currentStep === 7 && (
+            <SetupMdblistItems
+              key="custom-collections"
+              type="collection"
+              configured={mdblistConfigured}
+              finalStep
+              onBack={() => setCurrentStep(6)}
+              onContinue={finishSetup}
+            />
           )}
         </div>
       </div>

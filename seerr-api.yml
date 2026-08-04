@@ -2365,6 +2365,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MainSettings'
+  /settings/main/mdblist/validate:
+    post:
+      summary: Validate and save an MDBList API key
+      description: Validates an MDBList API key and saves it for the owner when successful.
+      tags:
+        - settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - apiKey
+              properties:
+                apiKey:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+      responses:
+        '200':
+          description: The MDBList API key was validated and saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  quota:
+                    type: object
+                    additionalProperties: true
+        '400':
+          description: The MDBList API key could not be validated.
+  /settings/imdb-ratings/initial-scan:
+    get:
+      summary: Get initial IMDb ratings scan status
+      tags:
+        - settings
+      responses:
+        '200':
+          description: Current initial scan status.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+    post:
+      summary: Start the initial IMDb ratings scan
+      tags:
+        - settings
+      responses:
+        '202':
+          description: The initial scan was started or is already running.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: MDBList has not been configured.
   /settings/network:
     get:
       summary: Get network settings

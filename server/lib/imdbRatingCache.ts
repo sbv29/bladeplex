@@ -69,6 +69,7 @@ class ImdbRatingCacheService {
   private cooldownUntil?: Date;
   private quota: MdblistQuotaSnapshot = {};
   private libraryWarmPromise?: Promise<void>;
+  private trackingInitialQueue = false;
 
   public status(): ImdbRatingCacheStatus {
     return {
@@ -109,6 +110,38 @@ class ImdbRatingCacheService {
   public async clear(): Promise<void> {
     this.queued.clear();
     await getRepository(ImdbRatingCache).clear();
+  }
+
+  public async beginInitialScan(): Promise<void> {
+    while (this.queueRunning || this.running) {
+      await new Promise((resolve) => setTimeout(resolve, QUEUE_DELAY_MS));
+    }
+    if (this.queueTimer) clearTimeout(this.queueTimer);
+    this.queueTimer = undefined;
+    this.queued.clear();
+    this.consecutiveProviderFailures = 0;
+    this.cooldownUntil = undefined;
+    this.quota = {};
+    this.resetRun(0);
+    this.trackingInitialQueue = true;
+  }
+
+  public async waitForPending(): Promise<void> {
+    while (this.queueRunning || this.queued.size > 0) {
+      if (
+        !this.queueRunning &&
+        !this.queueTimer &&
+        this.queued.size > 0 &&
+        !this.canRequest()
+      ) {
+        this.trackingInitialQueue = false;
+        throw new Error(
+          'MDBList paused the initial ratings scan because its provider limit was reached.'
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, QUEUE_DELAY_MS));
+    }
+    this.trackingInitialQueue = false;
   }
 
   public async getRatings(
@@ -218,7 +251,11 @@ class ImdbRatingCacheService {
             record.ratingTenths == null || record.voteCount == null;
           const retryDue =
             !record.nextRetryAt || record.nextRetryAt.getTime() <= now;
-          if (unresolved && retryDue && this.queued.size < QUEUE_LIMIT) {
+          if (
+            unresolved &&
+            (retryDue || this.trackingInitialQueue) &&
+            (this.trackingInitialQueue || this.queued.size < QUEUE_LIMIT)
+          ) {
             const sizeBefore = this.queued.size;
             this.enqueue(record);
             if (this.queued.size > sizeBefore) queued += 1;
@@ -312,8 +349,12 @@ class ImdbRatingCacheService {
 
   private enqueue(record: ImdbRatingCache): void {
     const key = this.key(record);
-    if (!this.queued.has(key) && this.queued.size < QUEUE_LIMIT) {
+    if (
+      !this.queued.has(key) &&
+      (this.trackingInitialQueue || this.queued.size < QUEUE_LIMIT)
+    ) {
       this.queued.set(key, record);
+      if (this.trackingInitialQueue) this.total += 1;
       this.scheduleQueue();
     }
   }
@@ -331,7 +372,6 @@ class ImdbRatingCacheService {
     if (!records.length) return;
     const apiKey = getSettings().main.mdblistApiKey;
     if (!apiKey) {
-      await this.recordProviderFailure(records, new Error('API key missing'));
       return;
     }
 
@@ -427,7 +467,7 @@ class ImdbRatingCacheService {
   }
 
   private isProviderFailure(error: unknown): boolean {
-    if (!axios.isAxiosError(error)) return true;
+    if (!axios.isAxiosError(error)) return false;
     const status = error.response?.status;
     return (
       !status ||
@@ -439,6 +479,7 @@ class ImdbRatingCacheService {
   }
 
   private canRequest(): boolean {
+    if (!getSettings().main.mdblistApiKey) return false;
     if (this.cooldownUntil && this.cooldownUntil.getTime() > Date.now()) {
       return false;
     }

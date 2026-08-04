@@ -13,6 +13,16 @@ import {
 class DiscoverSlider {
   public static async bootstrapSliders(): Promise<void> {
     const sliderRepository = getRepository(DiscoverSlider);
+    const removedLegacyStreamingChart = await sliderRepository.delete({
+      type: DiscoverSliderType.MDBLIST_JUSTWATCH_STREAMING_CHART_MOVIES,
+      isBuiltIn: true,
+    });
+
+    if (removedLegacyStreamingChart.affected) {
+      logger.info('Removed legacy built-in MDBList streaming chart slider', {
+        label: 'Discover Slider',
+      });
+    }
 
     for (const slider of defaultSliders) {
       const existingSlider = await sliderRepository.findOne({
@@ -22,22 +32,11 @@ class DiscoverSlider {
       });
 
       if (!existingSlider) {
-        const sliderToCreate = { ...slider };
-        if (
-          slider.type === DiscoverSliderType.MDBLIST_COLLECTIONS ||
-          slider.type === DiscoverSliderType.MDBLIST_TV_COLLECTIONS
-        ) {
-          const maximum = await sliderRepository
-            .createQueryBuilder('slider')
-            .select('MAX(slider.order)', 'max')
-            .getRawOne<{ max: number | null }>();
-          sliderToCreate.order = Number(maximum?.max ?? -1) + 1;
-        }
         logger.info('Creating built-in discovery slider', {
           label: 'Discover Slider',
           slider,
         });
-        await sliderRepository.save(new DiscoverSlider(sliderToCreate));
+        await sliderRepository.save(new DiscoverSlider(slider));
       }
     }
   }

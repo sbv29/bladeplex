@@ -1,9 +1,11 @@
 import GithubAPI from '@server/api/github';
 import JellyfinAPI from '@server/api/jellyfin';
+import MdblistRatingsAPI from '@server/api/mdblist/ratings';
 import PlexAPI from '@server/api/plexapi';
 import PlexTvAPI from '@server/api/plextv';
 import TautulliAPI from '@server/api/tautulli';
 import { ApiErrorCode } from '@server/constants/error';
+import { MediaType } from '@server/constants/media';
 import { getRepository, isPgsql } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
@@ -20,6 +22,7 @@ import type { AvailableCacheIds } from '@server/lib/cache';
 import cacheManager from '@server/lib/cache';
 import ImageProxy from '@server/lib/imageproxy';
 import imdbRatingCache from '@server/lib/imdbRatingCache';
+import imdbRatingInitialScan from '@server/lib/imdbRatingInitialScan';
 import { Permission } from '@server/lib/permissions';
 import { jellyfinFullScanner } from '@server/lib/scanners/jellyfin';
 import { plexFullScanner } from '@server/lib/scanners/plex';
@@ -43,6 +46,7 @@ import {
 } from '@server/utils/appVersion';
 import { dnsCache } from '@server/utils/dnsCache';
 import { getHostname } from '@server/utils/getHostname';
+import axios from 'axios';
 import type { DnsEntries, DnsStats } from 'dns-caching';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
@@ -96,6 +100,69 @@ settingsRoutes.get('/main', (req, res, next) => {
   }
 
   res.status(200).json(filteredMainSettings(req.user, settings.main));
+});
+
+settingsRoutes.post('/main/mdblist/validate', async (req, res, next) => {
+  logger.info('MDBList API key validation requested', { label: 'MDBList' });
+
+  if (req.user?.id !== 1) {
+    return next({
+      status: 403,
+      message: 'Only the owner can configure the MDBList API key.',
+    });
+  }
+
+  const parsed = z.string().trim().min(1).max(200).safeParse(req.body.apiKey);
+  if (!parsed.success) {
+    return next({ status: 400, message: 'Enter an MDBList API key.' });
+  }
+
+  try {
+    const client = new MdblistRatingsAPI(parsed.data);
+    const validation = await client.getImdbRatings(MediaType.MOVIE, [550]);
+
+    const settings = getSettings();
+    settings.main.mdblistApiKey = parsed.data;
+    await settings.save();
+
+    logger.info('MDBList API key validation succeeded', { label: 'MDBList' });
+
+    return res.json({ valid: true, quota: validation.quota });
+  } catch (error) {
+    logger.warn('MDBList API key validation failed', {
+      label: 'MDBList',
+      errorType:
+        error instanceof Error ? error.constructor.name : 'UnknownError',
+      status: axios.isAxiosError(error) ? error.response?.status : undefined,
+    });
+    return next({
+      status: 400,
+      message:
+        axios.isAxiosError(error) &&
+        (error.response?.status === 401 || error.response?.status === 403)
+          ? 'MDBList rejected this API key.'
+          : 'Unable to contact MDBList to validate this API key.',
+    });
+  }
+});
+
+settingsRoutes.get('/imdb-ratings/initial-scan', (_req, res) => {
+  return res.json(imdbRatingInitialScan.status());
+});
+
+settingsRoutes.post('/imdb-ratings/initial-scan', (req, res, next) => {
+  if (req.user?.id !== 1) {
+    return next({
+      status: 403,
+      message: 'Only the owner can start the initial IMDb ratings scan.',
+    });
+  }
+  if (!getSettings().main.mdblistApiKey) {
+    return next({ status: 400, message: 'Configure MDBList first.' });
+  }
+
+  imdbRatingInitialScan.start();
+  return res.status(202).json(imdbRatingInitialScan.status());
 });
 
 const mobileAnnouncementSchema = z

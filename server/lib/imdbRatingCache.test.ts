@@ -171,6 +171,14 @@ describe('IMDb rating cache', () => {
   });
 
   it('warms unresolved ratings after a media library scan', async () => {
+    await getRepository(ImdbRatingCache).save({
+      tmdbId: 550,
+      mediaType: MediaType.MOVIE,
+      imdbId: 'tt0137523',
+      missing: false,
+      failureCount: 1,
+      nextRetryAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
     await getRepository(Media).save([
       {
         tmdbId: 550,
@@ -208,8 +216,9 @@ describe('IMDb rating cache', () => {
     );
 
     try {
+      await imdbRatingCache.beginInitialScan();
       await imdbRatingCache.warmLibrary(MediaServerType.PLEX);
-      await imdbRatingCache.processPending();
+      await imdbRatingCache.waitForPending();
 
       const records = await getRepository(ImdbRatingCache).find({
         order: { tmdbId: 'ASC' },
@@ -226,6 +235,9 @@ describe('IMDb rating cache', () => {
         ]
       );
       assert.strictEqual(getImdbRatings.mock.callCount(), 2);
+      assert.strictEqual(imdbRatingCache.status().total, 2);
+      assert.strictEqual(imdbRatingCache.status().progress, 2);
+      assert.strictEqual(imdbRatingCache.status().successes, 2);
     } finally {
       getImdbRatings.mock.restore();
     }

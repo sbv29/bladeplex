@@ -5,7 +5,7 @@ import { useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import { MediaServerType } from '@server/constants/server';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
 
 const messages = defineMessages('components.Setup', {
@@ -15,7 +15,9 @@ const messages = defineMessages('components.Setup', {
   signinWithJellyfin: 'Enter your Jellyfin details',
   signinWithEmby: 'Enter your Emby details',
   signinWithPlex: 'Enter your Plex details',
-  back: 'Go back',
+  back: 'Back',
+  continue: 'Continue',
+  signedIn: 'You are signed in. Continue to configure your media server.',
 });
 
 interface LoginWithMediaServerProps {
@@ -34,6 +36,7 @@ const SetupLogin: React.FC<LoginWithMediaServerProps> = ({
     MediaServerType.NOT_CONFIGURED
   );
   const { user, revalidate } = useUser();
+  const hadUserOnMount = useRef(Boolean(user));
 
   // Effect that is triggered when the `authToken` comes back from the Plex OAuth
   // We take the token and attempt to login. If we get a success message, we will
@@ -60,10 +63,31 @@ const SetupLogin: React.FC<LoginWithMediaServerProps> = ({
   }, [authToken, mediaServerType, revalidate]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !hadUserOnMount.current) {
       onComplete();
     }
   }, [user, mediaServerType, onComplete]);
+
+  if (user && hadUserOnMount.current) {
+    return (
+      <div className="p-4">
+        <div className="mb-2 flex justify-center text-xl font-bold">
+          <FormattedMessage {...messages.signin} />
+        </div>
+        <p className="pb-6 text-center text-sm text-gray-300">
+          <FormattedMessage {...messages.signedIn} />
+        </p>
+        <div className="actions flex justify-between gap-3">
+          <Button buttonType="default" onClick={onCancel}>
+            <FormattedMessage {...messages.back} />
+          </Button>
+          <Button buttonType="primary" onClick={onComplete}>
+            <FormattedMessage {...messages.continue} />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">

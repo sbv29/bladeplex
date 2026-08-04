@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, before, describe, it, mock } from 'node:test';
 
+import MdblistRatingsAPI from '@server/api/mdblist/ratings';
 import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
 import { Permission } from '@server/lib/permissions';
@@ -85,6 +86,50 @@ describe('MDBList API key settings', () => {
 
     const readResponse = await owner.get('/settings/main');
     assert.equal(readResponse.body.mdblistApiKey, MDBLIST_API_KEY_MASK);
+  });
+
+  it('validates and stores an MDBList API key during setup', async () => {
+    const getImdbRatings = mock.method(
+      MdblistRatingsAPI.prototype,
+      'getImdbRatings',
+      async () => ({ ratings: [], returnedTmdbIds: new Set(), quota: {} })
+    );
+
+    try {
+      const owner = await loginAs('admin@seerr.dev');
+      const response = await owner
+        .post('/settings/main/mdblist/validate')
+        .send({ apiKey: ' setup-secret ' });
+
+      assert.equal(response.status, 200);
+      assert.equal(response.body.valid, true);
+      assert.equal(settings.main.mdblistApiKey, 'setup-secret');
+      assert.equal(getImdbRatings.mock.callCount(), 1);
+    } finally {
+      getImdbRatings.mock.restore();
+    }
+  });
+
+  it('does not store an MDBList API key when validation fails', async () => {
+    const getImdbRatings = mock.method(
+      MdblistRatingsAPI.prototype,
+      'getImdbRatings',
+      async () => {
+        throw new Error('Unauthorized');
+      }
+    );
+
+    try {
+      const owner = await loginAs('admin@seerr.dev');
+      const response = await owner
+        .post('/settings/main/mdblist/validate')
+        .send({ apiKey: 'invalid-secret' });
+
+      assert.equal(response.status, 400);
+      assert.equal(settings.main.mdblistApiKey, originalMdblistApiKey);
+    } finally {
+      getImdbRatings.mock.restore();
+    }
   });
 
   it('preserves the stored key when a mask or blank value is saved', async () => {
