@@ -59,9 +59,6 @@ const MdblistCollectionSlider = ({
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartRef = useRef({ x: 0, y: 0 });
-  const touchScrollRef = useRef<{ element: HTMLElement; left: number } | null>(
-    null
-  );
   const touchDraggingRef = useRef(false);
   const suppressClickRef = useRef(false);
 
@@ -179,14 +176,8 @@ const MdblistCollectionSlider = ({
     touchStartRef.current = { x: event.clientX, y: event.clientY };
     const target = event.currentTarget;
     const pointerId = event.pointerId;
-    const scrollElement = target
-      .closest('[data-testid="media-slider"]')
-      ?.querySelector<HTMLElement>('.overflow-x-scroll');
-    touchScrollRef.current = scrollElement
-      ? { element: scrollElement, left: scrollElement.scrollLeft }
-      : null;
-    target.setPointerCapture(pointerId);
     touchTimerRef.current = setTimeout(() => {
+      target.setPointerCapture(pointerId);
       touchDraggingRef.current = true;
       suppressClickRef.current = true;
       setDraggedId(id);
@@ -199,12 +190,6 @@ const MdblistCollectionSlider = ({
     if (!touchDraggingRef.current) {
       if (Math.hypot(deltaX, deltaY) > 8) {
         clearTouchTimer();
-        if (Math.abs(deltaX) > Math.abs(deltaY) && touchScrollRef.current) {
-          event.preventDefault();
-          suppressClickRef.current = true;
-          touchScrollRef.current.element.scrollLeft =
-            touchScrollRef.current.left - deltaX;
-        }
       }
       return;
     }
@@ -300,7 +285,7 @@ const MdblistCollectionSlider = ({
               }
             }}
             className={`${
-              canReorder ? 'cursor-grab touch-pan-y active:cursor-grabbing' : ''
+              canReorder ? 'cursor-grab touch-auto active:cursor-grabbing' : ''
             } ${draggedId === collection.id ? 'opacity-60' : ''}`}
           >
             <GenreCard
