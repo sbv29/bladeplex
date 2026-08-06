@@ -240,14 +240,14 @@ const MdblistCollectionSlider = ({
             )}
           </span>
           {canReorder && (
-            <span className="ml-1 inline-flex items-center gap-0.5 text-gray-400">
+            <div className="ml-1 inline-flex items-center gap-0.5 text-gray-300">
               <button
                 type="button"
                 aria-label={intl.formatMessage(messages.shuffle)}
                 title={intl.formatMessage(messages.shuffle)}
                 onClick={shuffle}
                 disabled={orderedCollections.length < 2}
-                className="rounded p-1 transition hover:bg-gray-700/60 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-40"
+                className="rounded bg-transparent p-1 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-40"
               >
                 <ArrowsRightLeftIcon className="h-4 w-4" />
               </button>
@@ -257,11 +257,11 @@ const MdblistCollectionSlider = ({
                 title={intl.formatMessage(messages.reset)}
                 onClick={resetAlphabetically}
                 disabled={orderedCollections.length < 2}
-                className="rounded p-1 transition hover:bg-gray-700/60 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-40"
+                className="rounded bg-transparent p-1 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-40"
               >
                 <ArrowUturnLeftIcon className="h-4 w-4" />
               </button>
-            </span>
+            </div>
           )}
         </div>
       </div>
