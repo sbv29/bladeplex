@@ -7,16 +7,15 @@ const root = resolve(__dirname, '../..');
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
 
 describe('server owner identity rendering', () => {
-  it('uses user ID 1, the configured purple, and a small crown badge', () => {
+  it('uses user ID 1 and the configured purple without a crown badge', () => {
     const identity = read(
       'src/components/Common/ServerOwnerIdentity/index.tsx'
     );
     const styles = read('src/styles/globals.css');
 
     assert.match(identity, /SERVER_OWNER_ID = 1/);
-    assert.match(identity, /👑/);
-    assert.match(identity, /text-\[0\.65em\]/);
-    assert.match(identity, /inline-block align-middle/);
+    assert.doesNotMatch(identity, /👑/);
+    assert.doesNotMatch(identity, /aria-label="Server owner"/);
     assert.match(styles, /\.server-owner-name[\s\S]*#8c53a4 !important/);
     assert.match(styles, /\.server-owner-avatar[\s\S]*0 0 0 2px #8c53a4/);
   });
