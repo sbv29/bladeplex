@@ -80,14 +80,16 @@ COMMIT_TAG='' BLADEPLEX_IMAGE="${EXPECTED_IMAGE_ID}" \
   fail 'Compose did not preserve the immutable image ID'
 pass 'Compose resolves the immutable image ID'
 
-grep -Fq 'BLADEPLEX_IMAGE="${IMAGE_NAME}"' "${DEPLOY_SCRIPT}" ||
-  fail 'normal production Compose wrapper does not pin bladeplex:latest'
-grep -Fq 'compose_production build bladeplex' "${DEPLOY_SCRIPT}" ||
-  fail 'production build bypasses the pinned Compose wrapper'
+grep -Fq 'readonly IMAGE_REPOSITORY="ghcr.io/sbv29/bladeplex"' "${DEPLOY_SCRIPT}" ||
+  fail 'production does not use the BladePlex GHCR repository'
+grep -Fq 'image_name="${IMAGE_REPOSITORY}:${full_hash}"' "${DEPLOY_SCRIPT}" ||
+  fail 'production does not select an immutable full-commit image tag'
+grep -Fq 'docker pull "${image_name}"' "${DEPLOY_SCRIPT}" ||
+  fail 'production does not pull the selected immutable image'
 grep -Fq 'compose_production up' "${DEPLOY_SCRIPT}" ||
   fail 'production recreation bypasses the pinned Compose wrapper'
 grep -Fq 'BLADEPLEX_IMAGE="${rollback_image}"' "${DEPLOY_SCRIPT}" ||
   fail 'automatic rollback does not pass its captured image ID'
 grep -Fq -- '--pull never' "${DEPLOY_SCRIPT}" ||
   fail 'automatic rollback permits image pulls'
-pass 'normal deployment and automatic rollback variables are pinned'
+pass 'registry deployment and automatic rollback variables are pinned'

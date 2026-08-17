@@ -29,6 +29,7 @@ import restartFlag from '@server/utils/restartFlag';
 import { isPerson } from '@server/utils/typeHelpers';
 import { Router } from 'express';
 import authRoutes from './auth';
+import bladeplexStatusRoutes from './bladeplexStatus';
 import blocklistRoutes from './blocklist';
 import collectionRoutes from './collection';
 import communityReactionRoutes from './communityReactions';
@@ -112,6 +113,7 @@ router.get('/status/appdata', (_req, res) => {
 });
 
 router.use('/user', isAuthenticated(), user);
+router.use('/bladeplex-status', isAuthenticated(), bladeplexStatusRoutes);
 router.get('/settings/public', async (req, res) => {
   const settings = getSettings();
 

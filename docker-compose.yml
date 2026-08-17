@@ -3,11 +3,7 @@ name: ${BLADEPLEX_PROJECT_NAME:-bladeplex}
 services:
   bladeplex:
     container_name: ${BLADEPLEX_CONTAINER_NAME:-bladeplex}
-    image: ${BLADEPLEX_IMAGE:-bladeplex:latest}
-    build:
-      context: .
-      args:
-        COMMIT_TAG: ${COMMIT_TAG:-local}
+    image: ${BLADEPLEX_IMAGE:-ghcr.io/sbv29/bladeplex:latest}
     ports:
       - '127.0.0.1:${BLADEPLEX_HOST_PORT:-5055}:5055'
     volumes:

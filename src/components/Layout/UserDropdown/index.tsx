@@ -1,5 +1,12 @@
 import CachedImage from '@app/components/Common/CachedImage';
+import {
+  BladePlexStatusRow,
+  statusStyles,
+  type BladePlexStatusResponse,
+} from '@app/components/Layout/UserDropdown/BladePlexStatus';
 import MiniQuotaDisplay from '@app/components/Layout/UserDropdown/MiniQuotaDisplay';
+import StatusOnboarding from '@app/components/Layout/UserDropdown/StatusOnboarding';
+import { SettingsContext } from '@app/context/SettingsContext';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import type { PwaInstallMode } from '@app/utils/pwaInstall';
@@ -13,8 +20,9 @@ import { CogIcon, UserIcon } from '@heroicons/react/24/solid';
 import axios from 'axios';
 import type { LinkProps } from 'next/link';
 import Link from 'next/link';
-import { Fragment, forwardRef } from 'react';
+import { Fragment, forwardRef, useContext } from 'react';
 import { useIntl } from 'react-intl';
+import useSWR from 'swr';
 
 const messages = defineMessages('components.Layout.UserDropdown', {
   myprofile: 'Profile',
@@ -44,7 +52,14 @@ interface UserDropdownProps {
 
 const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
   const intl = useIntl();
+  const { currentSettings } = useContext(SettingsContext);
   const { user, revalidate, hasPermission } = useUser();
+  const statusIndicatorEnabled = currentSettings.statusIndicatorEnabled;
+  const { data: serviceStatus } = useSWR<BladePlexStatusResponse>(
+    statusIndicatorEnabled ? '/api/v1/bladeplex-status' : null,
+    { refreshInterval: 2 * 60 * 1000 }
+  );
+  const displayedStatus = serviceStatus?.status ?? 'unknown';
 
   const logout = async () => {
     const response = await axios.post('/api/v1/auth/logout');
@@ -58,7 +73,11 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
     <Menu as="div" className="relative ml-3">
       <div>
         <Menu.Button
-          className="flex max-w-xs items-center rounded-full text-sm ring-1 ring-gray-700 hover:ring-gray-500 focus:outline-none focus:ring-gray-500"
+          className={`flex max-w-xs items-center rounded-full text-sm focus:outline-none ${
+            statusIndicatorEnabled
+              ? `ring-2 ${statusStyles[displayedStatus].ring} ${statusStyles[displayedStatus].attention} hover:ring-opacity-100 focus:ring-opacity-100`
+              : ''
+          }`}
           data-testid="user-menu"
         >
           <CachedImage
@@ -71,6 +90,12 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
           />
         </Menu.Button>
       </div>
+      {statusIndicatorEnabled && (
+        <StatusOnboarding
+          userId={user?.id}
+          revision={currentSettings.statusIndicatorRevision}
+        />
+      )}
       <Transition
         as={Fragment}
         enter="transition ease-out duration-100"
@@ -81,13 +106,17 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
         leaveTo="opacity-0 scale-95"
         appear
       >
-        <Menu.Items className="absolute right-0 mt-2 w-72 origin-top-right rounded-md shadow-lg">
+        <Menu.Items className="absolute right-0 mt-2 w-72 origin-top-right rounded-md shadow-lg focus:outline-none">
           <div className="divide-y divide-gray-700 rounded-md bg-gray-800/80 ring-1 ring-gray-700 backdrop-blur">
             <div className="flex flex-col space-y-4 px-4 py-4">
               <div className="flex items-center space-x-2">
                 <CachedImage
                   type="avatar"
-                  className="h-8 w-8 rounded-full object-cover sm:h-10 sm:w-10"
+                  className={`h-8 w-8 rounded-full object-cover sm:h-10 sm:w-10 ${
+                    statusIndicatorEnabled
+                      ? `ring-2 ${statusStyles[displayedStatus].ring} ${statusStyles[displayedStatus].attention}`
+                      : ''
+                  }`}
                   src={user ? user.avatar : ''}
                   alt=""
                   width={40}
@@ -200,6 +229,17 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
                 )}
               </Menu.Item>
             </div>
+            {statusIndicatorEnabled && (
+              <div className="p-1">
+                <BladePlexStatusRow
+                  status={displayedStatus}
+                  statusPageUrl={
+                    serviceStatus?.statusPageUrl ??
+                    currentSettings.statusPageUrl
+                  }
+                />
+              </div>
+            )}
           </div>
         </Menu.Items>
       </Transition>

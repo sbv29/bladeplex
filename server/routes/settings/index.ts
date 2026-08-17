@@ -18,6 +18,7 @@ import type {
   SettingsAboutResponse,
 } from '@server/interfaces/api/settingsInterfaces';
 import { scheduledJobs } from '@server/job/schedule';
+import { resetBladePlexStatusCache } from '@server/lib/bladeplexStatus';
 import type { AvailableCacheIds } from '@server/lib/cache';
 import cacheManager from '@server/lib/cache';
 import ImageProxy from '@server/lib/imageproxy';
@@ -183,8 +184,50 @@ const mobileAnnouncementSchema = z
     path: ['message'],
   });
 
+const statusIndicatorSchema = z.object({
+  enabled: z.boolean(),
+  url: z
+    .string()
+    .trim()
+    .url()
+    .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), {
+      message: 'The Uptime Kuma URL must use HTTP or HTTPS.',
+    })
+    .refine(
+      (value) => {
+        const parsedUrl = new URL(value);
+        return !parsedUrl.username && !parsedUrl.password;
+      },
+      {
+        message: 'The public Uptime Kuma URL cannot contain credentials.',
+      }
+    ),
+});
+
 settingsRoutes.post('/main', async (req, res, next) => {
   const settings = getSettings();
+
+  const statusIndicatorKeys = [
+    'statusIndicatorEnabled',
+    'statusPageUrl',
+  ] as const;
+  const updatesStatusIndicator = statusIndicatorKeys.some((key) =>
+    Object.prototype.hasOwnProperty.call(req.body, key)
+  );
+  const statusIndicator = statusIndicatorSchema.safeParse({
+    enabled:
+      req.body.statusIndicatorEnabled ?? settings.main.statusIndicatorEnabled,
+    url: req.body.statusPageUrl ?? settings.main.statusPageUrl,
+  });
+
+  if (updatesStatusIndicator && !statusIndicator.success) {
+    return next({
+      status: 400,
+      message:
+        statusIndicator.error.issues[0]?.message ??
+        'Enter a valid Uptime Kuma status page URL.',
+    });
+  }
 
   const updatesMdblistApiKey = Object.prototype.hasOwnProperty.call(
     req.body,
@@ -255,6 +298,7 @@ settingsRoutes.post('/main', async (req, res, next) => {
   const nextSettings = omit(
     req.body,
     'mdblistApiKey',
+    'statusIndicatorRevision',
     'mobileAnnouncementRevision',
     'mobileAnnouncementExpiresAt'
   );
@@ -284,9 +328,23 @@ settingsRoutes.post('/main', async (req, res, next) => {
         : settings.main.mobileAnnouncementRevision,
     });
   }
+  if (updatesStatusIndicator && statusIndicator.success) {
+    const toggleChanged =
+      statusIndicator.data.enabled !== settings.main.statusIndicatorEnabled;
+    Object.assign(nextSettings, {
+      statusIndicatorEnabled: statusIndicator.data.enabled,
+      statusPageUrl: new URL(statusIndicator.data.url).toString(),
+      statusIndicatorRevision: toggleChanged
+        ? settings.main.statusIndicatorRevision + 1
+        : settings.main.statusIndicatorRevision,
+    });
+  }
 
   settings.main = merge(settings.main, nextSettings);
   await settings.save();
+  if (updatesStatusIndicator) {
+    resetBladePlexStatusCache();
+  }
 
   if (!req.user) {
     return next({ status: 500, message: 'User missing from request.' });

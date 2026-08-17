@@ -649,3 +649,59 @@
 .ptr--box {
   margin-bottom: -13px !important;
 }
+
+@keyframes status-ring-pulse-green {
+  0%,
+  100% {
+    outline: 0 solid rgb(34 197 94 / 0%);
+    outline-offset: 1px;
+  }
+  50% {
+    outline: 3px solid rgb(34 197 94 / 18%);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes status-ring-pulse-amber {
+  0%,
+  100% {
+    outline: 0 solid rgb(245 158 11 / 0%);
+    outline-offset: 1px;
+  }
+  50% {
+    outline: 3px solid rgb(245 158 11 / 18%);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes status-ring-pulse-red {
+  0%,
+  100% {
+    outline: 0 solid rgb(239 68 68 / 0%);
+    outline-offset: 1px;
+  }
+  50% {
+    outline: 3px solid rgb(239 68 68 / 20%);
+    outline-offset: 2px;
+  }
+}
+
+.status-ring-pulse-green {
+  animation: status-ring-pulse-green 2.8s ease-in-out infinite;
+}
+
+.status-ring-pulse-amber {
+  animation: status-ring-pulse-amber 1.775s ease-in-out infinite;
+}
+
+.status-ring-pulse-red {
+  animation: status-ring-pulse-red 0.75s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-ring-pulse-green,
+  .status-ring-pulse-amber,
+  .status-ring-pulse-red {
+    animation: none;
+  }
+}

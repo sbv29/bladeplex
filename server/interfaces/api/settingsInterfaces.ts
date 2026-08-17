@@ -68,6 +68,9 @@ export interface PublicSettingsResponse {
   newPlexLogin: boolean;
   youtubeUrl: string;
   versionCheck: boolean;
+  statusIndicatorEnabled: boolean;
+  statusPageUrl: string;
+  statusIndicatorRevision: number;
   plexClientIdentifier: string;
   mobileAnnouncementEnabled: boolean;
   mobileAnnouncementMessage: string;

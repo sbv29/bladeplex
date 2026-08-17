@@ -266,6 +266,9 @@ CoreApp.getInitialProps = async (initialProps) => {
     newPlexLogin: true,
     youtubeUrl: '',
     versionCheck: true,
+    statusIndicatorEnabled: false,
+    statusPageUrl: 'https://status.sblade.io/',
+    statusIndicatorRevision: 1,
     plexClientIdentifier: '',
     mobileAnnouncementEnabled: false,
     mobileAnnouncementMessage:

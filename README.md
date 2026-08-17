@@ -18,7 +18,22 @@
 
 BladePlex builds on the excellent foundation provided by [Seerr](https://github.com/seerr-team/seerr), retaining its request-management features while adding a more personalized discovery experience and BladePlex-specific enhancements.
 
-## Current Features
+## BladePlex Specific Features & Enhancements
+
+- **Native MDBList discovery:** Add public or official MDBList movie and TV lists as native Discover sliders with linked full-page grids.
+- **Ranked, efficient list browsing:** MDBList ordering is preserved while results are hydrated through TMDb, paginated locally, and cached to reduce upstream requests.
+- **IMDb ratings throughout the UI:** Movie and TV posters and detail pages display IMDb ratings backed by a persistent refreshable cache.
+- **Community reactions:** Users can like or dislike movies and series and see community totals.
+- **Expanded discovery:** Browse digital new releases, official streaming charts, and administrator-curated custom lists.
+- **Customizable Discover experience:** Reorder or hide managed discovery sliders while retaining native BladePlex navigation and presentation.
+- **Mobile announcements:** Administrators can publish dismissible, scheduled announcements above the mobile navigation.
+- **Refined mobile details:** Improved action layouts, tags, issue reporting, and media-specific watchlist behavior on smaller screens.
+- **Graphite visual design:** A darker BladePlex theme with refined Discover headings and branded browser/PWA presentation.
+- **Configurable video links:** Use YouTube or a compatible self-hosted YouTube frontend for video links.
+- **Deployment safeguards:** Production deployment scripts validate commit metadata and container health while preserving a rollback path.
+- **PWA Integration:** Added PWA standard install guides for IOS and Android with 7 day reminder timers.
+
+## Standard Seer  Features
 
 - Full Jellyfin, Emby, and Plex integration, including authentication, user import, and user management.
 - Support for **PostgreSQL** and **SQLite** databases.
@@ -33,35 +48,63 @@ BladePlex builds on the excellent foundation provided by [Seerr](https://github.
 - Watchlist and blocklist support.
 - Progressive Web App support for installation on compatible desktop and mobile devices.
 
-## BladePlex Features
-
-- **Native MDBList discovery:** Add public or official MDBList movie and TV lists as native Discover sliders with linked full-page grids.
-- **Ranked, efficient list browsing:** MDBList ordering is preserved while results are hydrated through TMDb, paginated locally, and cached to reduce upstream requests.
-- **IMDb ratings throughout the UI:** Movie and TV posters and detail pages display IMDb ratings backed by a persistent refreshable cache.
-- **Community reactions:** Users can like or dislike movies and series and see community totals.
-- **Expanded discovery:** Browse digital new releases, official streaming charts, and administrator-curated custom lists.
-- **Customizable Discover experience:** Reorder or hide managed discovery sliders while retaining native BladePlex navigation and presentation.
-- **Mobile announcements:** Administrators can publish dismissible, scheduled announcements above the mobile navigation.
-- **Refined mobile details:** Improved action layouts, tags, issue reporting, and media-specific watchlist behavior on smaller screens.
-- **Graphite visual design:** A darker BladePlex theme with refined Discover headings and branded browser/PWA presentation.
-- **Configurable video links:** Use YouTube or a compatible self-hosted YouTube frontend for video links.
-- **Deployment safeguards:** Production deployment scripts validate commit metadata and container health while preserving a rollback path.
-
 More improvements are planned. Check the [issue tracker](/../../issues) for known issues and feature ideas.
 
 ## Getting Started
 
 BladePlex follows Seerr's core deployment and configuration model. The upstream [Seerr documentation](https://docs.seerr.dev/getting-started/) is a useful reference for prerequisites, media-server setup, Sonarr/Radarr integration, permissions, and notifications.
 
-To build this repository with Docker Compose:
+Create a folder containing this `compose.yaml`:
+Update the first port listed as needed (leave the trailing :5055)
+
+```yaml
+services:
+  bladeplex:
+    image: ghcr.io/sbv29/bladeplex:latest
+    container_name: bladeplex
+    ports:
+      - '127.0.0.1:5059:5055'
+    volumes:
+      - bladeplex-config:/app/config
+    restart: unless-stopped
+
+volumes:
+  bladeplex-config:
+```
+
+Start BladePlex:
+
+```bash
+docker compose pull
+docker compose up --detach
+```
+
+BladePlex is then available at [http://localhost:5059](http://localhost:5059). The named `bladeplex-config` volume preserves settings and the database when the container is replaced.
+
+### Updating
+
+Pull the newest tested `main` image and let Compose replace the container:
+
+```bash
+docker compose pull
+docker compose up --detach
+```
+
+Do not delete the `bladeplex-config` volume during an update. To install or roll back to an exact build, replace `latest` with a full Git commit SHA: `ghcr.io/sbv29/bladeplex:<full-commit-sha>`.
+
+### Building from source
+
+Published images are recommended for normal installations. Contributors and offline deployments can still build locally:
 
 ```bash
 git clone https://github.com/sbv29/bladeplex.git
 cd bladeplex
-docker compose up --detach --build
+docker compose -f docker-compose.yml -f compose.build.yaml up --detach --build
 ```
 
-BladePlex is then available at [http://localhost:5055](http://localhost:5055) by default. Persistent application data is stored through the `config` mount defined in [`docker-compose.yml`](./docker-compose.yml); review that file before deploying to production.
+The repository Compose configuration defaults to [http://localhost:5055](http://localhost:5055) and stores persistent data at `/opt/stacks/seerr/config`. Set `BLADEPLEX_HOST_PORT` and `BLADEPLEX_CONFIG_PATH` in a `.env` file when different values are required.
+
+See [the BladePlex Docker guide](./docs/getting-started/bladeplex-docker.md) for Windows, Linux, upgrades, pinned versions, and production deployment.
 
 ## Preview
 

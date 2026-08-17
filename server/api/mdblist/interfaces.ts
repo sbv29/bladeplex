@@ -12,7 +12,7 @@ export const MdblistMovieItemSchema = z.object({
   rank: z
     .number()
     .int()
-    .positive()
+    .nonnegative()
     .nullable()
     .optional()
     .transform((rank) => rank ?? 0),
