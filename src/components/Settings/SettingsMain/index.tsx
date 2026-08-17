@@ -80,6 +80,17 @@ const messages = defineMessages('components.Settings.SettingsMain', {
     'Base URL for YouTube videos if a self-hosted YouTube instance is used.',
   versionCheck: 'Version Check',
   versionCheckTip: 'Automatically check for new versions on GitHub.',
+  statusIndicator: 'Service Status Indicator',
+  statusIndicatorDescription:
+    'Show live Uptime Kuma service health around user avatars and in the profile menu.',
+  statusIndicatorEnabled: 'Enable service status indicator',
+  statusPageUrl: 'Uptime Kuma Status Page URL',
+  statusPageUrlTip:
+    'Use the public status page URL. Standard /status/{slug} URLs and custom status-page domains are supported.',
+  statusPageUrlRequired: 'Enter your public Uptime Kuma status page URL.',
+  statusPageUrlInvalid: 'Enter a valid HTTP or HTTPS URL.',
+  statusPageUrlCredentials:
+    'Use a public status page URL without embedded credentials.',
   validationUrl: 'You must provide a valid URL',
   validationUrlTrailingSlash: 'URL must not end in a trailing slash',
   mobileAnnouncement: 'Mobile Announcement Banner',
@@ -152,6 +163,30 @@ const SettingsMain = () => {
         intl.formatMessage(messages.validationUrlTrailingSlash),
         (value) => !value || !value.endsWith('/')
       ),
+    statusPageUrl: Yup.string()
+      .trim()
+      .required(intl.formatMessage(messages.statusPageUrlRequired))
+      .url(intl.formatMessage(messages.statusPageUrlInvalid))
+      .test(
+        'http-url',
+        intl.formatMessage(messages.statusPageUrlInvalid),
+        (value) => !value || /^https?:\/\//i.test(value)
+      )
+      .test(
+        'no-credentials',
+        intl.formatMessage(messages.statusPageUrlCredentials),
+        (value) => {
+          if (!value) {
+            return true;
+          }
+          try {
+            const parsedUrl = new URL(value);
+            return !parsedUrl.username && !parsedUrl.password;
+          } catch {
+            return true;
+          }
+        }
+      ),
     mobileAnnouncementMessage: Yup.string()
       .trim()
       .max(200, intl.formatMessage(messages.mobileAnnouncementMessageTooLong))
@@ -222,6 +257,8 @@ const SettingsMain = () => {
             cacheImages: data?.cacheImages,
             youtubeUrl: data?.youtubeUrl,
             versionCheck: data?.versionCheck,
+            statusIndicatorEnabled: data?.statusIndicatorEnabled ?? false,
+            statusPageUrl: data?.statusPageUrl ?? 'https://status.sblade.io/',
             mobileAnnouncementEnabled: data?.mobileAnnouncementEnabled ?? false,
             mobileAnnouncementMessage:
               data?.mobileAnnouncementMessage ??
@@ -252,6 +289,8 @@ const SettingsMain = () => {
                 cacheImages: values.cacheImages,
                 youtubeUrl: values.youtubeUrl,
                 versionCheck: values?.versionCheck,
+                statusIndicatorEnabled: values.statusIndicatorEnabled,
+                statusPageUrl: values.statusPageUrl.trim(),
                 ...(currentUser?.id === 1
                   ? {
                       mdblistApiKey: values.mdblistApiKey,
@@ -683,6 +722,61 @@ const SettingsMain = () => {
                         setFieldValue('versionCheck', !values.versionCheck);
                       }}
                     />
+                  </div>
+                </div>
+                <div className="mt-8 border-t border-gray-700 pt-6">
+                  <div className="mb-4">
+                    <h4 className="text-lg font-semibold text-gray-100">
+                      {intl.formatMessage(messages.statusIndicator)}
+                    </h4>
+                    <p className="mt-1 text-sm text-gray-400">
+                      {intl.formatMessage(messages.statusIndicatorDescription)}
+                    </p>
+                  </div>
+                  <div className="form-row">
+                    <label
+                      htmlFor="statusIndicatorEnabled"
+                      className="checkbox-label"
+                    >
+                      {intl.formatMessage(messages.statusIndicatorEnabled)}
+                    </label>
+                    <div className="form-input-area">
+                      <Field
+                        type="checkbox"
+                        id="statusIndicatorEnabled"
+                        name="statusIndicatorEnabled"
+                        onChange={() => {
+                          setFieldValue(
+                            'statusIndicatorEnabled',
+                            !values.statusIndicatorEnabled
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <label htmlFor="statusPageUrl" className="text-label">
+                      {intl.formatMessage(messages.statusPageUrl)}
+                      <span className="label-tip">
+                        {intl.formatMessage(messages.statusPageUrlTip)}
+                      </span>
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <Field
+                          id="statusPageUrl"
+                          name="statusPageUrl"
+                          type="text"
+                          inputMode="url"
+                          placeholder="Add your uptime kuma URL here ie, https://status.example.com/status/plex"
+                        />
+                      </div>
+                      {errors.statusPageUrl &&
+                        touched.statusPageUrl &&
+                        typeof errors.statusPageUrl === 'string' && (
+                          <div className="error">{errors.statusPageUrl}</div>
+                        )}
+                    </div>
                   </div>
                 </div>
                 {currentUser?.id === 1 && (

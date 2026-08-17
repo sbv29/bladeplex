@@ -5,6 +5,8 @@ import {
   type BladePlexStatusResponse,
 } from '@app/components/Layout/UserDropdown/BladePlexStatus';
 import MiniQuotaDisplay from '@app/components/Layout/UserDropdown/MiniQuotaDisplay';
+import StatusOnboarding from '@app/components/Layout/UserDropdown/StatusOnboarding';
+import { SettingsContext } from '@app/context/SettingsContext';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import type { PwaInstallMode } from '@app/utils/pwaInstall';
@@ -18,7 +20,7 @@ import { CogIcon, UserIcon } from '@heroicons/react/24/solid';
 import axios from 'axios';
 import type { LinkProps } from 'next/link';
 import Link from 'next/link';
-import { Fragment, forwardRef } from 'react';
+import { Fragment, forwardRef, useContext } from 'react';
 import { useIntl } from 'react-intl';
 import useSWR from 'swr';
 
@@ -50,9 +52,11 @@ interface UserDropdownProps {
 
 const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
   const intl = useIntl();
+  const { currentSettings } = useContext(SettingsContext);
   const { user, revalidate, hasPermission } = useUser();
+  const statusIndicatorEnabled = currentSettings.statusIndicatorEnabled;
   const { data: serviceStatus } = useSWR<BladePlexStatusResponse>(
-    '/api/v1/bladeplex-status',
+    statusIndicatorEnabled ? '/api/v1/bladeplex-status' : null,
     { refreshInterval: 2 * 60 * 1000 }
   );
   const displayedStatus = serviceStatus?.status ?? 'unknown';
@@ -69,7 +73,11 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
     <Menu as="div" className="relative ml-3">
       <div>
         <Menu.Button
-          className={`flex max-w-xs items-center rounded-full text-sm ring-2 ${statusStyles[displayedStatus].ring} hover:ring-opacity-100 focus:outline-none focus:ring-opacity-100`}
+          className={`flex max-w-xs items-center rounded-full text-sm focus:outline-none ${
+            statusIndicatorEnabled
+              ? `ring-2 ${statusStyles[displayedStatus].ring} ${statusStyles[displayedStatus].attention} hover:ring-opacity-100 focus:ring-opacity-100`
+              : ''
+          }`}
           data-testid="user-menu"
         >
           <CachedImage
@@ -82,6 +90,12 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
           />
         </Menu.Button>
       </div>
+      {statusIndicatorEnabled && (
+        <StatusOnboarding
+          userId={user?.id}
+          revision={currentSettings.statusIndicatorRevision}
+        />
+      )}
       <Transition
         as={Fragment}
         enter="transition ease-out duration-100"
@@ -98,7 +112,11 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
               <div className="flex items-center space-x-2">
                 <CachedImage
                   type="avatar"
-                  className="h-8 w-8 rounded-full object-cover sm:h-10 sm:w-10"
+                  className={`h-8 w-8 rounded-full object-cover sm:h-10 sm:w-10 ${
+                    statusIndicatorEnabled
+                      ? `ring-2 ${statusStyles[displayedStatus].ring} ${statusStyles[displayedStatus].attention}`
+                      : ''
+                  }`}
                   src={user ? user.avatar : ''}
                   alt=""
                   width={40}
@@ -211,14 +229,17 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
                 )}
               </Menu.Item>
             </div>
-            <div className="p-1">
-              <BladePlexStatusRow
-                status={displayedStatus}
-                statusPageUrl={
-                  serviceStatus?.statusPageUrl ?? 'https://status.sblade.io/'
-                }
-              />
-            </div>
+            {statusIndicatorEnabled && (
+              <div className="p-1">
+                <BladePlexStatusRow
+                  status={displayedStatus}
+                  statusPageUrl={
+                    serviceStatus?.statusPageUrl ??
+                    currentSettings.statusPageUrl
+                  }
+                />
+              </div>
+            )}
           </div>
         </Menu.Items>
       </Transition>

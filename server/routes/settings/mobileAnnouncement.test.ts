@@ -26,6 +26,11 @@ const originalAnnouncement = {
   mobileAnnouncementExpiresAt: settings.main.mobileAnnouncementExpiresAt,
 };
 const originalMdblistApiKey = settings.main.mdblistApiKey;
+const originalStatusIndicator = {
+  statusIndicatorEnabled: settings.main.statusIndicatorEnabled,
+  statusPageUrl: settings.main.statusPageUrl,
+  statusIndicatorRevision: settings.main.statusIndicatorRevision,
+};
 
 mock.method(settings, 'save', async () => undefined);
 
@@ -65,7 +70,70 @@ before(() => {
 
 afterEach(() => {
   Object.assign(settings.main, originalAnnouncement);
+  Object.assign(settings.main, originalStatusIndicator);
   settings.main.mdblistApiKey = originalMdblistApiKey;
+});
+
+describe('service status indicator settings', () => {
+  it('defaults to the disabled BladePlex status page', () => {
+    const defaults = new Settings().main;
+
+    assert.equal(defaults.statusIndicatorEnabled, false);
+    assert.equal(defaults.statusPageUrl, 'https://status.sblade.io/');
+    assert.equal(defaults.statusIndicatorRevision, 1);
+  });
+
+  it('stores and normalizes an Uptime Kuma status page URL', async () => {
+    const owner = await loginAs('admin@seerr.dev');
+    const response = await owner.post('/settings/main').send({
+      statusIndicatorEnabled: true,
+      statusPageUrl: 'https://kuma.example/status/home',
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.statusIndicatorEnabled, true);
+    assert.equal(
+      response.body.statusIndicatorRevision,
+      originalStatusIndicator.statusIndicatorRevision + 1
+    );
+    assert.equal(
+      response.body.statusPageUrl,
+      'https://kuma.example/status/home'
+    );
+  });
+
+  it('increments the onboarding revision every time the toggle changes', async () => {
+    const owner = await loginAs('admin@seerr.dev');
+    const initialRevision = settings.main.statusIndicatorRevision;
+
+    const enabled = await owner.post('/settings/main').send({
+      statusIndicatorEnabled: true,
+    });
+    const disabled = await owner.post('/settings/main').send({
+      statusIndicatorEnabled: false,
+    });
+
+    assert.equal(enabled.body.statusIndicatorRevision, initialRevision + 1);
+    assert.equal(disabled.body.statusIndicatorRevision, initialRevision + 2);
+  });
+
+  it('rejects non-HTTP status page URLs', async () => {
+    const owner = await loginAs('admin@seerr.dev');
+    const response = await owner.post('/settings/main').send({
+      statusPageUrl: 'file:///tmp/status',
+    });
+
+    assert.equal(response.status, 400);
+    assert.equal(
+      settings.main.statusPageUrl,
+      originalStatusIndicator.statusPageUrl
+    );
+
+    const credentialsResponse = await owner.post('/settings/main').send({
+      statusPageUrl: 'https://user:password@kuma.example/status/home',
+    });
+    assert.equal(credentialsResponse.status, 400);
+  });
 });
 
 describe('MDBList API key settings', () => {

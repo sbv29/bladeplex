@@ -158,6 +158,9 @@ export interface MainSettings {
   locale: string;
   youtubeUrl: string;
   versionCheck: boolean;
+  statusIndicatorEnabled: boolean;
+  statusPageUrl: string;
+  statusIndicatorRevision: number;
   mobileAnnouncementEnabled: boolean;
   mobileAnnouncementMessage: string;
   mobileAnnouncementColor: MobileAnnouncementColor;
@@ -238,6 +241,9 @@ interface FullPublicSettings extends PublicSettings {
   newPlexLogin: boolean;
   youtubeUrl: string;
   versionCheck: boolean;
+  statusIndicatorEnabled: boolean;
+  statusPageUrl: string;
+  statusIndicatorRevision: number;
   plexClientIdentifier: string;
   mobileAnnouncementEnabled: boolean;
   mobileAnnouncementMessage: string;
@@ -462,6 +468,9 @@ class Settings {
         locale: 'en',
         youtubeUrl: '',
         versionCheck: true,
+        statusIndicatorEnabled: false,
+        statusPageUrl: 'https://status.sblade.io/',
+        statusIndicatorRevision: 1,
         mobileAnnouncementEnabled: false,
         mobileAnnouncementMessage:
           'This is a new release, text me if there are issues',
@@ -778,6 +787,9 @@ class Settings {
       newPlexLogin: this.data.main.newPlexLogin,
       youtubeUrl: this.data.main.youtubeUrl,
       versionCheck: this.data.main.versionCheck,
+      statusIndicatorEnabled: this.data.main.statusIndicatorEnabled,
+      statusPageUrl: this.data.main.statusPageUrl,
+      statusIndicatorRevision: this.data.main.statusIndicatorRevision,
       plexClientIdentifier: this.data.clientId,
       mobileAnnouncementEnabled: this.data.main.mobileAnnouncementEnabled,
       mobileAnnouncementMessage: this.data.main.mobileAnnouncementMessage,

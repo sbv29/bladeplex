@@ -29,15 +29,39 @@ const messages = defineMessages('components.Layout.UserDropdown', {
 
 export const statusStyles: Record<
   BladePlexStatus,
-  { dot: string; ring: string }
+  { attention: string; dot: string; ring: string }
 > = {
-  operational: { dot: 'bg-green-400', ring: 'ring-green-500/70' },
-  degraded: { dot: 'bg-amber-400', ring: 'ring-amber-500/70' },
-  plex_down: { dot: 'bg-red-400', ring: 'ring-red-500/70' },
-  radarr_down: { dot: 'bg-red-400', ring: 'ring-red-500/70' },
-  sonarr_down: { dot: 'bg-red-400', ring: 'ring-red-500/70' },
-  downloads_down: { dot: 'bg-red-400', ring: 'ring-red-500/70' },
-  unknown: { dot: 'bg-gray-500', ring: 'ring-gray-600' },
+  operational: {
+    attention: 'status-ring-pulse-green',
+    dot: 'bg-green-400',
+    ring: 'ring-green-500/70',
+  },
+  degraded: {
+    attention: 'status-ring-pulse-amber',
+    dot: 'bg-amber-400',
+    ring: 'ring-amber-500/70',
+  },
+  plex_down: {
+    attention: 'status-ring-pulse-red',
+    dot: 'bg-red-400',
+    ring: 'ring-red-500/70',
+  },
+  radarr_down: {
+    attention: 'status-ring-pulse-red',
+    dot: 'bg-red-400',
+    ring: 'ring-red-500/70',
+  },
+  sonarr_down: {
+    attention: 'status-ring-pulse-red',
+    dot: 'bg-red-400',
+    ring: 'ring-red-500/70',
+  },
+  downloads_down: {
+    attention: 'status-ring-pulse-red',
+    dot: 'bg-red-400',
+    ring: 'ring-red-500/70',
+  },
+  unknown: { attention: '', dot: 'bg-gray-500', ring: 'ring-gray-600' },
 };
 
 export const BladePlexStatusRow = ({
@@ -65,8 +89,9 @@ export const BladePlexStatusRow = ({
       data-testid="user-menu-service-status"
     >
       <span
-        className={`mr-3 h-2.5 w-2.5 flex-none rounded-full ${statusStyles[status].dot}`}
+        className={`mr-3 h-2.5 w-2.5 flex-none rounded-full ${statusStyles[status].dot} ${statusStyles[status].attention}`}
         aria-hidden="true"
+        data-testid="user-menu-service-status-dot"
       />
       <span className="min-w-0 flex-1">
         {intl.formatMessage(statusMessage)}

@@ -1,9 +1,8 @@
+import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import axios from 'axios';
 
 export const BLADEPLEX_STATUS_URL = 'https://status.sblade.io/';
-const STATUS_PAGE_API_URL = `${BLADEPLEX_STATUS_URL}api/status-page/plex`;
-const STATUS_HEARTBEAT_API_URL = `${BLADEPLEX_STATUS_URL}api/status-page/heartbeat/plex`;
 const STATUS_CACHE_TTL_MS = 2 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 30 * 1000;
 const STATUS_REQUEST_TIMEOUT_MS = 3000;
@@ -46,17 +45,34 @@ interface StatusCacheEntry {
   expiresAt: number;
 }
 
-const unknownStatus = (): BladePlexStatusResponse => ({
+const unknownStatus = (
+  statusPageUrl = BLADEPLEX_STATUS_URL
+): BladePlexStatusResponse => ({
   status: 'unknown',
-  statusPageUrl: BLADEPLEX_STATUS_URL,
+  statusPageUrl,
 });
+
+export const getKumaEndpoints = (statusPageUrl: string) => {
+  const parsedUrl = new URL(statusPageUrl);
+  const statusPath = parsedUrl.pathname.match(/^(.*)\/status\/([^/]+)\/?$/);
+  const basePath = statusPath?.[1] ?? parsedUrl.pathname.replace(/\/$/, '');
+  const slug = decodeURIComponent(statusPath?.[2] ?? 'plex');
+  const apiBase = `${parsedUrl.origin}${basePath}/api/status-page`;
+
+  return {
+    statusPageUrl: parsedUrl.toString(),
+    statusPageApiUrl: `${apiBase}/${encodeURIComponent(slug)}`,
+    heartbeatApiUrl: `${apiBase}/heartbeat/${encodeURIComponent(slug)}`,
+  };
+};
 
 let cache: StatusCacheEntry | undefined;
 let pendingRequest: Promise<BladePlexStatusResponse> | undefined;
 
 export const mapKumaStatus = (
   statusPage: KumaStatusPageResponse,
-  heartbeats: KumaHeartbeatResponse
+  heartbeats: KumaHeartbeatResponse,
+  statusPageUrl = BLADEPLEX_STATUS_URL
 ): BladePlexStatusResponse => {
   const monitors =
     statusPage.publicGroupList?.flatMap((group) => group.monitorList ?? []) ??
@@ -66,7 +82,7 @@ export const mapKumaStatus = (
   );
 
   if (!plexMonitor || monitors.length === 0 || !heartbeats.heartbeatList) {
-    return unknownStatus();
+    return unknownStatus(statusPageUrl);
   }
 
   const latestStatus = (monitorId: number) => {
@@ -77,13 +93,13 @@ export const mapKumaStatus = (
   const plexStatus = latestStatus(plexMonitor.id);
 
   if (plexStatus === undefined) {
-    return unknownStatus();
+    return unknownStatus(statusPageUrl);
   }
 
   if (plexStatus === 0) {
     return {
       status: 'plex_down',
-      statusPageUrl: BLADEPLEX_STATUS_URL,
+      statusPageUrl,
     };
   }
 
@@ -96,40 +112,43 @@ export const mapKumaStatus = (
   if (downMonitorNames.has('radarr')) {
     return {
       status: 'radarr_down',
-      statusPageUrl: BLADEPLEX_STATUS_URL,
+      statusPageUrl,
     };
   }
 
   if (downMonitorNames.has('sonarr')) {
     return {
       status: 'sonarr_down',
-      statusPageUrl: BLADEPLEX_STATUS_URL,
+      statusPageUrl,
     };
   }
 
   if (downMonitorNames.has('sabnzb') || downMonitorNames.has('sabnzbd')) {
     return {
       status: 'downloads_down',
-      statusPageUrl: BLADEPLEX_STATUS_URL,
+      statusPageUrl,
     };
   }
 
   const monitorStatuses = monitors.map((monitor) => latestStatus(monitor.id));
 
   if (monitorStatuses.some((status) => status === undefined)) {
-    return unknownStatus();
+    return unknownStatus(statusPageUrl);
   }
 
   return {
     status: monitorStatuses.every((status) => status === 1)
       ? 'operational'
       : 'degraded',
-    statusPageUrl: BLADEPLEX_STATUS_URL,
+    statusPageUrl,
   };
 };
 
 export const fetchBladePlexStatus =
   async (): Promise<BladePlexStatusResponse> => {
+    const configuredUrl =
+      getSettings().main.statusPageUrl || BLADEPLEX_STATUS_URL;
+    const endpoints = getKumaEndpoints(configuredUrl);
     const override =
       process.env.NODE_ENV !== 'production'
         ? process.env.BLADEPLEX_STATUS_OVERRIDE
@@ -144,26 +163,30 @@ export const fetchBladePlexStatus =
       override === 'downloads_down' ||
       override === 'unknown'
     ) {
-      return { status: override, statusPageUrl: BLADEPLEX_STATUS_URL };
+      return { status: override, statusPageUrl: endpoints.statusPageUrl };
     }
 
     try {
       const [statusPage, heartbeats] = await Promise.all([
-        axios.get<KumaStatusPageResponse>(STATUS_PAGE_API_URL, {
+        axios.get<KumaStatusPageResponse>(endpoints.statusPageApiUrl, {
           timeout: STATUS_REQUEST_TIMEOUT_MS,
         }),
-        axios.get<KumaHeartbeatResponse>(STATUS_HEARTBEAT_API_URL, {
+        axios.get<KumaHeartbeatResponse>(endpoints.heartbeatApiUrl, {
           timeout: STATUS_REQUEST_TIMEOUT_MS,
         }),
       ]);
 
-      return mapKumaStatus(statusPage.data, heartbeats.data);
+      return mapKumaStatus(
+        statusPage.data,
+        heartbeats.data,
+        endpoints.statusPageUrl
+      );
     } catch (error) {
       logger.warn('Unable to retrieve BladePlex service status', {
         label: 'BladePlex Status',
         errorMessage: error instanceof Error ? error.message : String(error),
       });
-      return unknownStatus();
+      return unknownStatus(endpoints.statusPageUrl);
     }
   };
 

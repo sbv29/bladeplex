@@ -6,6 +6,7 @@ import {
   BLADEPLEX_STATUS_URL,
   fetchBladePlexStatus,
   getBladePlexStatus,
+  getKumaEndpoints,
   mapKumaStatus,
   resetBladePlexStatusCache,
 } from './bladeplexStatus';
@@ -45,6 +46,19 @@ afterEach(() => {
 });
 
 describe('BladePlex status mapping', () => {
+  it('builds Kuma API endpoints from standard and custom-domain URLs', () => {
+    assert.deepEqual(getKumaEndpoints('https://kuma.example/status/home'), {
+      statusPageUrl: 'https://kuma.example/status/home',
+      statusPageApiUrl: 'https://kuma.example/api/status-page/home',
+      heartbeatApiUrl: 'https://kuma.example/api/status-page/heartbeat/home',
+    });
+    assert.deepEqual(getKumaEndpoints(BLADEPLEX_STATUS_URL), {
+      statusPageUrl: BLADEPLEX_STATUS_URL,
+      statusPageApiUrl: `${BLADEPLEX_STATUS_URL}api/status-page/plex`,
+      heartbeatApiUrl: `${BLADEPLEX_STATUS_URL}api/status-page/heartbeat/plex`,
+    });
+  });
+
   it('reports operational only when every latest heartbeat is up', () => {
     assert.deepEqual(mapKumaStatus(statusPage, heartbeats(1, 1)), {
       status: 'operational',
