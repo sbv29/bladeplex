@@ -16,6 +16,10 @@ describe('BladePlex profile status rendering', () => {
     assert.ok(statusRowPosition < menuItemsPosition);
     assert.match(dropdown, /data-testid="user-menu"/);
     assert.match(
+      dropdown,
+      /<Menu\.Items className="[^"]*focus:outline-none[^"]*"/
+    );
+    assert.match(
       read('src/components/Layout/UserDropdown/BladePlexStatus.tsx'),
       /data-testid="user-menu-service-status"/
     );
