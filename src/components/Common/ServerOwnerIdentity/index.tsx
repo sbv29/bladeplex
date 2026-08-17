@@ -23,14 +23,5 @@ export const ServerOwnerName = ({
     className={`${className} ${isServerOwner(userId) ? 'server-owner-name' : ''}`}
   >
     {children}
-    {isServerOwner(userId) && (
-      <span
-        className="ml-1 inline-block align-middle text-[0.65em] leading-none"
-        role="img"
-        aria-label="Server owner"
-      >
-        👑
-      </span>
-    )}
   </span>
 );
