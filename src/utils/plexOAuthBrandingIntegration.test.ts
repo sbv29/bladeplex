@@ -12,6 +12,9 @@ describe('Plex OAuth branding', () => {
       plexOAuth,
       /'X-Plex-Device-Name': `\$\{browser\.getBrowserName\(\)\} \(BladePlex\)`/
     );
-    assert.doesNotMatch(plexOAuth, /X-Plex-(?:Product|Device-Name)'[^\n]*Seerr/);
+    assert.doesNotMatch(
+      plexOAuth,
+      /X-Plex-(?:Product|Device-Name)'[^\n]*Seerr/
+    );
   });
 });
