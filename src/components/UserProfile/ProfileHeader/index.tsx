@@ -1,5 +1,9 @@
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
+import {
+  ServerOwnerName,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
 import type { User } from '@app/hooks/useUser';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
@@ -44,7 +48,9 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
           <div className="relative">
             <CachedImage
               type="avatar"
-              className="h-24 w-24 rounded-full bg-gray-600 object-cover ring-1 ring-gray-700"
+              className={`h-24 w-24 rounded-full bg-gray-600 object-cover ring-1 ring-gray-700 ${serverOwnerAvatarClass(
+                user.id
+              )}`}
               src={user.avatar}
               alt=""
               width={96}
@@ -64,7 +70,9 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
               }
               className="text-overseerr text-lg font-bold hover:to-purple-200 sm:text-2xl"
             >
-              {user.displayName}
+              <ServerOwnerName userId={user.id}>
+                {user.displayName}
+              </ServerOwnerName>
             </Link>
             {user.email && user.displayName.toLowerCase() !== user.email && (
               <span className="text-sm text-gray-400 sm:ml-2 sm:text-lg">

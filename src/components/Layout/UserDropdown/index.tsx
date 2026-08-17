@@ -1,5 +1,10 @@
 import CachedImage from '@app/components/Common/CachedImage';
 import {
+  ServerOwnerName,
+  isServerOwner,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
+import {
   BladePlexStatusRow,
   statusStyles,
   type BladePlexStatusResponse,
@@ -54,6 +59,7 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
   const intl = useIntl();
   const { currentSettings } = useContext(SettingsContext);
   const { user, revalidate, hasPermission } = useUser();
+  const currentUserIsOwner = isServerOwner(user?.id);
   const statusIndicatorEnabled = currentSettings.statusIndicatorEnabled;
   const { data: serviceStatus } = useSWR<BladePlexStatusResponse>(
     statusIndicatorEnabled ? '/api/v1/bladeplex-status' : null,
@@ -74,9 +80,11 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
       <div>
         <Menu.Button
           className={`flex max-w-xs items-center rounded-full text-sm focus:outline-none ${
-            statusIndicatorEnabled
+            statusIndicatorEnabled && !currentUserIsOwner
               ? `ring-2 ${statusStyles[displayedStatus].ring} ${statusStyles[displayedStatus].attention} hover:ring-opacity-100 focus:ring-opacity-100`
-              : ''
+              : currentUserIsOwner
+                ? serverOwnerAvatarClass(user?.id)
+                : ''
           }`}
           data-testid="user-menu"
         >
@@ -113,9 +121,9 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
                 <CachedImage
                   type="avatar"
                   className={`h-8 w-8 rounded-full object-cover sm:h-10 sm:w-10 ${
-                    statusIndicatorEnabled
+                    statusIndicatorEnabled && !currentUserIsOwner
                       ? `ring-2 ${statusStyles[displayedStatus].ring} ${statusStyles[displayedStatus].attention}`
-                      : ''
+                      : serverOwnerAvatarClass(user?.id)
                   }`}
                   src={user ? user.avatar : ''}
                   alt=""
@@ -123,9 +131,12 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
                   height={40}
                 />
                 <div className="flex min-w-0 flex-col">
-                  <span className="truncate text-xl font-semibold text-gray-200">
+                  <ServerOwnerName
+                    userId={user?.id}
+                    className="truncate text-xl font-semibold text-gray-200"
+                  >
                     {user?.displayName}
-                  </span>
+                  </ServerOwnerName>
                   {user?.displayName?.toLowerCase() !== user?.email && (
                     <span className="truncate text-sm text-gray-400">
                       {user?.email}

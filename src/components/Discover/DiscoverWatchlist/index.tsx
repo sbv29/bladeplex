@@ -1,6 +1,7 @@
 import Header from '@app/components/Common/Header';
 import ListView from '@app/components/Common/ListView';
 import PageTitle from '@app/components/Common/PageTitle';
+import { ServerOwnerName } from '@app/components/Common/ServerOwnerIdentity';
 import useDiscover from '@app/hooks/useDiscover';
 import { useUser } from '@app/hooks/useUser';
 import ErrorPage from '@app/pages/_error';
@@ -60,7 +61,9 @@ const DiscoverWatchlist = () => {
           subtext={
             router.query.userId ? (
               <Link href={`/users/${user?.id}`} className="hover:underline">
-                {user?.displayName}
+                <ServerOwnerName userId={user?.id}>
+                  {user?.displayName}
+                </ServerOwnerName>
               </Link>
             ) : (
               ''

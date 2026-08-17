@@ -2,6 +2,7 @@ import BlocklistedTagsBadge from '@app/components/BlocklistedTagsBadge';
 import Badge from '@app/components/Common/Badge';
 import Button from '@app/components/Common/Button';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
+import { ServerOwnerName } from '@app/components/Common/ServerOwnerIdentity';
 import Tooltip from '@app/components/Common/Tooltip';
 import useToasts from '@app/hooks/useToasts';
 import { useUser } from '@app/hooks/useUser';
@@ -96,9 +97,12 @@ const BlocklistBlock = ({
                         : `/users/${data.user.id}`
                     }
                   >
-                    <span className="font-semibold text-gray-100 transition duration-300 hover:text-white hover:underline">
+                    <ServerOwnerName
+                      userId={data.user.id}
+                      className="font-semibold text-gray-100 transition duration-300 hover:text-white hover:underline"
+                    >
                       {data.user.displayName}
-                    </span>
+                    </ServerOwnerName>
                   </Link>
                 </span>
               </>

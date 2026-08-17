@@ -1,6 +1,10 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import CachedImage from '@app/components/Common/CachedImage';
 import { SmallLoadingSpinner } from '@app/components/Common/LoadingSpinner';
+import {
+  ServerOwnerName,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
 import SlideCheckbox from '@app/components/Common/SlideCheckbox';
 import type { User } from '@app/hooks/useUser';
 import { Permission, useUser } from '@app/hooks/useUser';
@@ -630,13 +634,18 @@ const AdvancedRequester = ({
                             type="avatar"
                             src={selectedUser.avatar}
                             alt=""
-                            className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
+                            className={`h-6 w-6 flex-shrink-0 rounded-full object-cover ${serverOwnerAvatarClass(
+                              selectedUser.id
+                            )}`}
                             width={24}
                             height={24}
                           />
-                          <span className="ml-3 block">
+                          <ServerOwnerName
+                            userId={selectedUser.id}
+                            className="ml-3 block"
+                          >
                             {selectedUser.displayName}
-                          </span>
+                          </ServerOwnerName>
                           {selectedUser.displayName.toLowerCase() !==
                             selectedUser.email && (
                             <span className="ml-1 truncate text-gray-400">
@@ -683,13 +692,18 @@ const AdvancedRequester = ({
                                     type="avatar"
                                     src={user.avatar}
                                     alt=""
-                                    className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
+                                    className={`h-6 w-6 flex-shrink-0 rounded-full object-cover ${serverOwnerAvatarClass(
+                                      user.id
+                                    )}`}
                                     width={24}
                                     height={24}
                                   />
-                                  <span className="ml-3 block flex-shrink-0">
+                                  <ServerOwnerName
+                                    userId={user.id}
+                                    className="ml-3 block flex-shrink-0"
+                                  >
                                     {user.displayName}
-                                  </span>
+                                  </ServerOwnerName>
                                   {user.displayName.toLowerCase() !==
                                     user.email && (
                                     <span className="ml-1 truncate text-gray-400">

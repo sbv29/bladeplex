@@ -6,6 +6,10 @@ import ConfirmButton from '@app/components/Common/ConfirmButton';
 import Header from '@app/components/Common/Header';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
+import {
+  ServerOwnerName,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
 import useDebouncedState from '@app/hooks/useDebouncedState';
 import useToasts from '@app/hooks/useToasts';
 import { useUpdateQueryParams } from '@app/hooks/useUpdateQueryParams';
@@ -421,14 +425,19 @@ const BlocklistedItem = ({ item, revalidateList }: BlocklistedItemProps) => {
                           type="avatar"
                           src={item.user.avatar}
                           alt=""
-                          className="avatar-sm ml-1.5"
+                          className={`avatar-sm ml-1.5 ${serverOwnerAvatarClass(
+                            item.user.id
+                          )}`}
                           width={20}
                           height={20}
                           style={{ objectFit: 'cover' }}
                         />
-                        <span className="ml-1 truncate text-sm font-semibold group-hover:text-white group-hover:underline">
+                        <ServerOwnerName
+                          userId={item.user.id}
+                          className="ml-1 truncate text-sm font-semibold group-hover:text-white group-hover:underline"
+                        >
                           {item.user.displayName}
-                        </span>
+                        </ServerOwnerName>
                       </span>
                     </Link>
                   ) : item.blocklistedTags ? (

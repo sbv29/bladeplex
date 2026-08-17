@@ -1,6 +1,10 @@
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import Modal from '@app/components/Common/Modal';
+import {
+  ServerOwnerName,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
 import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
@@ -91,7 +95,9 @@ const IssueComment = ({
           type="avatar"
           src={comment.user.avatar}
           alt=""
-          className="h-10 w-10 scale-100 transform-gpu rounded-full object-cover ring-1 ring-gray-500 transition duration-300 hover:scale-105"
+          className={`h-10 w-10 scale-100 transform-gpu rounded-full object-cover ring-1 ring-gray-500 transition duration-300 hover:scale-105 ${serverOwnerAvatarClass(
+            comment.user.id
+          )}`}
           width={40}
           height={40}
         />
@@ -251,7 +257,9 @@ const IssueComment = ({
                     }
                     className="font-semibold text-gray-100 transition duration-300 hover:text-white hover:underline"
                   >
-                    {comment.user.displayName}
+                    <ServerOwnerName userId={comment.user.id}>
+                      {comment.user.displayName}
+                    </ServerOwnerName>
                   </Link>
                 ),
                 relativeTime: (

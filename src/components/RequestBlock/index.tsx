@@ -1,6 +1,10 @@
 import Badge from '@app/components/Common/Badge';
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
+import {
+  ServerOwnerName,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
 import Tooltip from '@app/components/Common/Tooltip';
 import RequestModal from '@app/components/RequestModal';
 import useRequestOverride from '@app/hooks/useRequestOverride';
@@ -113,12 +117,16 @@ const RequestBlock = ({ request, onUpdate }: RequestBlockProps) => {
                       type="avatar"
                       src={request.requestedBy.avatar}
                       alt=""
-                      className="avatar-sm object-cover"
+                      className={`avatar-sm object-cover ${serverOwnerAvatarClass(
+                        request.requestedBy.id
+                      )}`}
                       width={20}
                       height={20}
                     />
                   </span>
-                  {request.requestedBy.displayName}
+                  <ServerOwnerName userId={request.requestedBy.id}>
+                    {request.requestedBy.displayName}
+                  </ServerOwnerName>
                 </Link>
               </span>
             </div>
@@ -143,12 +151,16 @@ const RequestBlock = ({ request, onUpdate }: RequestBlockProps) => {
                         type="avatar"
                         src={request.modifiedBy.avatar}
                         alt=""
-                        className="avatar-sm object-cover"
+                        className={`avatar-sm object-cover ${serverOwnerAvatarClass(
+                          request.modifiedBy.id
+                        )}`}
                         width={20}
                         height={20}
                       />
                     </span>
-                    {request.modifiedBy.displayName}
+                    <ServerOwnerName userId={request.modifiedBy.id}>
+                      {request.modifiedBy.displayName}
+                    </ServerOwnerName>
                   </Link>
                 </span>
               </div>
