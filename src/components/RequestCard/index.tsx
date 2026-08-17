@@ -119,7 +119,7 @@ const RequestCardError = ({ requestData }: RequestCardErrorProps) => {
                       href={`/users/${requestData.requestedBy.id}`}
                       className="group flex items-center"
                     >
-                      <span className="avatar-sm">
+                      <span className="avatar-sm ml-0.5">
                         <CachedImage
                           type="avatar"
                           src={requestData.requestedBy.avatar}
@@ -401,7 +401,7 @@ const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
                 href={`/users/${requestData.requestedBy.id}`}
                 className="group flex items-center"
               >
-                <span className="avatar-sm">
+                <span className="avatar-sm ml-0.5">
                   <CachedImage
                     type="avatar"
                     src={requestData.requestedBy.avatar}
