@@ -1,4 +1,5 @@
 import Button from '@app/components/Common/Button';
+import { ServerOwnerName } from '@app/components/Common/ServerOwnerIdentity';
 import { issueOptions } from '@app/components/IssueModal/constants';
 import { useUser } from '@app/hooks/useUser';
 import {
@@ -47,7 +48,9 @@ const IssueBlock = ({ issue }: IssueBlockProps) => {
                 }
                 className="font-semibold text-gray-100 transition duration-300 hover:text-white hover:underline"
               >
-                {issue.createdBy.displayName}
+                <ServerOwnerName userId={issue.createdBy.id}>
+                  {issue.createdBy.displayName}
+                </ServerOwnerName>
               </Link>
             </span>
           </div>

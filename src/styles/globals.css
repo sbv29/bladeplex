@@ -37,6 +37,14 @@
   }
 }
 
+.server-owner-name {
+  color: #8c53a4 !important;
+}
+
+.server-owner-avatar {
+  box-shadow: 0 0 0 2px #8c53a4 !important;
+}
+
 @layer base {
   :root {
     --color-surface-canvas: 11 11 11;

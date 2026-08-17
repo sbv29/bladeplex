@@ -7,6 +7,10 @@ import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import Modal from '@app/components/Common/Modal';
 import PageTitle from '@app/components/Common/PageTitle';
 import SensitiveInput from '@app/components/Common/SensitiveInput';
+import {
+  ServerOwnerName,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
 import Table from '@app/components/Common/Table';
 import BulkEditModal from '@app/components/UserList/BulkEditModal';
 import PlexImportModal from '@app/components/UserList/PlexImportModal';
@@ -791,7 +795,9 @@ const UserList = () => {
                   >
                     <CachedImage
                       type="avatar"
-                      className="h-10 w-10 rounded-full object-cover"
+                      className={`h-10 w-10 rounded-full object-cover ${serverOwnerAvatarClass(
+                        user.id
+                      )}`}
                       src={user.avatar}
                       alt=""
                       width={40}
@@ -804,10 +810,12 @@ const UserList = () => {
                       className="text-base font-bold leading-5 transition duration-300 hover:underline"
                       data-testid="user-list-username-link"
                     >
-                      {user.username ||
-                        user.jellyfinUsername ||
-                        user.plexUsername ||
-                        user.email}
+                      <ServerOwnerName userId={user.id}>
+                        {user.username ||
+                          user.jellyfinUsername ||
+                          user.plexUsername ||
+                          user.email}
+                      </ServerOwnerName>
                     </Link>
                     {(
                       user.username ||

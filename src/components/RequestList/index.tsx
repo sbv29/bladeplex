@@ -2,6 +2,7 @@ import Button from '@app/components/Common/Button';
 import Header from '@app/components/Common/Header';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
+import { ServerOwnerName } from '@app/components/Common/ServerOwnerIdentity';
 import Tooltip from '@app/components/Common/Tooltip';
 import RequestItem from '@app/components/RequestList/RequestItem';
 import { useUpdateQueryParams } from '@app/hooks/useUpdateQueryParams';
@@ -152,11 +153,15 @@ const RequestList = () => {
           subtext={
             router.pathname.startsWith('/profile') ? (
               <Link href={`/profile`} className="hover:underline">
-                {currentUser?.displayName}
+                <ServerOwnerName userId={currentUser?.id}>
+                  {currentUser?.displayName}
+                </ServerOwnerName>
               </Link>
             ) : router.query.userId ? (
               <Link href={`/users/${user?.id}`} className="hover:underline">
-                {user?.displayName}
+                <ServerOwnerName userId={user?.id}>
+                  {user?.displayName}
+                </ServerOwnerName>
               </Link>
             ) : (
               ''

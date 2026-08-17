@@ -3,6 +3,10 @@ import Badge from '@app/components/Common/Badge';
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import ConfirmButton from '@app/components/Common/ConfirmButton';
+import {
+  ServerOwnerName,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
 import RequestModal from '@app/components/RequestModal';
 import StatusBadge from '@app/components/StatusBadge';
 import useDeepLinks from '@app/hooks/useDeepLinks';
@@ -196,14 +200,19 @@ const RequestItemError = ({
                                 type="avatar"
                                 src={requestData.requestedBy.avatar}
                                 alt=""
-                                className="avatar-sm object-cover"
+                                className={`avatar-sm object-cover ${serverOwnerAvatarClass(
+                                  requestData.requestedBy.id
+                                )}`}
                                 width={20}
                                 height={20}
                               />
                             </span>
-                            <span className="truncate text-sm group-hover:underline">
+                            <ServerOwnerName
+                              userId={requestData.requestedBy.id}
+                              className="truncate text-sm group-hover:underline"
+                            >
                               {requestData.requestedBy.displayName}
-                            </span>
+                            </ServerOwnerName>
                           </Link>
                         ),
                       })}
@@ -256,13 +265,17 @@ const RequestItemError = ({
                               type="avatar"
                               src={requestData.modifiedBy.avatar}
                               alt=""
-                              className="avatar-sm object-cover"
+                              className={`avatar-sm object-cover ${serverOwnerAvatarClass(
+                                requestData.requestedBy.id
+                              )}`}
                               width={20}
                               height={20}
                             />
                           </span>
                           <span className="truncate text-sm group-hover:underline">
-                            {requestData.modifiedBy.displayName}
+                            <ServerOwnerName userId={requestData.modifiedBy.id}>
+                              {requestData.modifiedBy.displayName}
+                            </ServerOwnerName>
                           </span>
                         </Link>
                       ),
@@ -591,9 +604,12 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
                               height={20}
                             />
                           </span>
-                          <span className="truncate text-sm font-semibold group-hover:text-white group-hover:underline">
+                          <ServerOwnerName
+                            userId={requestData.requestedBy.id}
+                            className="truncate text-sm font-semibold group-hover:text-white group-hover:underline"
+                          >
                             {requestData.requestedBy.displayName}
-                          </span>
+                          </ServerOwnerName>
                         </Link>
                       ),
                     })}
@@ -652,7 +668,9 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
                           />
                         </span>
                         <span className="truncate text-sm font-semibold group-hover:text-white group-hover:underline">
-                          {requestData.modifiedBy.displayName}
+                          <ServerOwnerName userId={requestData.modifiedBy.id}>
+                            {requestData.modifiedBy.displayName}
+                          </ServerOwnerName>
                         </span>
                       </Link>
                     ),

@@ -2,6 +2,7 @@ import BlocklistBlock from '@app/components/BlocklistBlock';
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import ConfirmButton from '@app/components/Common/ConfirmButton';
+import { serverOwnerAvatarClass } from '@app/components/Common/ServerOwnerIdentity';
 import SlideOver from '@app/components/Common/SlideOver';
 import Tooltip from '@app/components/Common/Tooltip';
 import DownloadBlock from '@app/components/DownloadBlock';
@@ -404,7 +405,9 @@ const ManageSlideOver = ({
                                       type="avatar"
                                       src={user.avatar}
                                       alt={user.displayName}
-                                      className="h-8 w-8 scale-100 transform-gpu rounded-full object-cover ring-1 ring-gray-500 transition duration-300 hover:scale-105"
+                                      className={`h-8 w-8 scale-100 transform-gpu rounded-full object-cover ring-1 ring-gray-500 transition duration-300 hover:scale-105 ${serverOwnerAvatarClass(
+                                        user.id
+                                      )}`}
                                       width={32}
                                       height={32}
                                     />
@@ -566,7 +569,9 @@ const ManageSlideOver = ({
                                       type="avatar"
                                       src={user.avatar}
                                       alt={user.displayName}
-                                      className="h-8 w-8 scale-100 transform-gpu rounded-full object-cover ring-1 ring-gray-500 transition duration-300 hover:scale-105"
+                                      className={`h-8 w-8 scale-100 transform-gpu rounded-full object-cover ring-1 ring-gray-500 transition duration-300 hover:scale-105 ${serverOwnerAvatarClass(
+                                        user.id
+                                      )}`}
                                       width={32}
                                       height={32}
                                     />

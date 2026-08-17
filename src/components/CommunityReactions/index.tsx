@@ -1,6 +1,10 @@
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import Modal from '@app/components/Common/Modal';
+import {
+  ServerOwnerName,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
 import useToasts from '@app/hooks/useToasts';
 import { useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
@@ -58,9 +62,13 @@ const UserList = ({ users }: { users: CommunityReactionUser[] }) => (
           alt=""
           width={32}
           height={32}
-          className="h-8 w-8 rounded-full object-cover"
+          className={`h-8 w-8 rounded-full object-cover ${serverOwnerAvatarClass(
+            reactionUser.id
+          )}`}
         />
-        <span className="text-gray-100">{reactionUser.displayName}</span>
+        <ServerOwnerName userId={reactionUser.id} className="text-gray-100">
+          {reactionUser.displayName}
+        </ServerOwnerName>
       </li>
     ))}
   </ul>

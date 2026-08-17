@@ -2,6 +2,10 @@ import Spinner from '@app/assets/spinner.svg';
 import Badge from '@app/components/Common/Badge';
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
+import {
+  ServerOwnerName,
+  serverOwnerAvatarClass,
+} from '@app/components/Common/ServerOwnerIdentity';
 import Tooltip from '@app/components/Common/Tooltip';
 import RequestModal from '@app/components/RequestModal';
 import StatusBadge from '@app/components/StatusBadge';
@@ -120,14 +124,19 @@ const RequestCardError = ({ requestData }: RequestCardErrorProps) => {
                           type="avatar"
                           src={requestData.requestedBy.avatar}
                           alt=""
-                          className="avatar-sm object-cover"
+                          className={`avatar-sm object-cover ${serverOwnerAvatarClass(
+                            requestData.requestedBy.id
+                          )}`}
                           width={20}
                           height={20}
                         />
                       </span>
-                      <span className="truncate group-hover:underline">
+                      <ServerOwnerName
+                        userId={requestData.requestedBy.id}
+                        className="truncate group-hover:underline"
+                      >
                         {requestData.requestedBy.displayName}
-                      </span>
+                      </ServerOwnerName>
                     </Link>
                   </div>
                 )}
@@ -397,14 +406,19 @@ const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
                     type="avatar"
                     src={requestData.requestedBy.avatar}
                     alt=""
-                    className="avatar-sm object-cover"
+                    className={`avatar-sm object-cover ${serverOwnerAvatarClass(
+                      requestData.requestedBy.id
+                    )}`}
                     width={20}
                     height={20}
                   />
                 </span>
-                <span className="truncate font-semibold group-hover:text-white group-hover:underline">
+                <ServerOwnerName
+                  userId={requestData.requestedBy.id}
+                  className="truncate font-semibold group-hover:text-white group-hover:underline"
+                >
                   {requestData.requestedBy.displayName}
-                </span>
+                </ServerOwnerName>
               </Link>
             </div>
           )}
