@@ -4,6 +4,7 @@ import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import {
   ServerOwnerName,
+  isServerOwner,
   serverOwnerAvatarClass,
 } from '@app/components/Common/ServerOwnerIdentity';
 import Tooltip from '@app/components/Common/Tooltip';
@@ -351,7 +352,11 @@ const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
         }}
       />
       <div
-        className="relative flex w-72 overflow-hidden rounded-xl bg-gray-800 bg-cover bg-center p-4 text-gray-400 shadow ring-1 ring-gray-700 sm:w-96"
+        className={`relative flex w-72 overflow-hidden rounded-xl bg-gray-800 bg-cover bg-center p-4 text-gray-400 shadow ring-1 sm:w-96 ${
+          isServerOwner(requestData.requestedBy.id)
+            ? 'ring-[#8c53a4]'
+            : 'ring-gray-700'
+        }`}
         data-testid="request-card"
       >
         {title.backdropPath && (

@@ -50,4 +50,13 @@ describe('server owner identity rendering', () => {
     assert.match(dropdown, /const currentUserIsOwner = isServerOwner/);
     assert.match(dropdown, /statusIndicatorEnabled && !currentUserIsOwner/);
   });
+
+  it('uses the owner purple for recent request cards made by the owner', () => {
+    const requestCard = read('src/components/RequestCard/index.tsx');
+
+    assert.match(
+      requestCard,
+      /isServerOwner\(requestData\.requestedBy\.id\)[\s\S]*ring-\[#8c53a4\][\s\S]*ring-gray-700/
+    );
+  });
 });
