@@ -1,4 +1,9 @@
 import CachedImage from '@app/components/Common/CachedImage';
+import {
+  BladePlexStatusRow,
+  statusStyles,
+  type BladePlexStatusResponse,
+} from '@app/components/Layout/UserDropdown/BladePlexStatus';
 import MiniQuotaDisplay from '@app/components/Layout/UserDropdown/MiniQuotaDisplay';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
@@ -15,6 +20,7 @@ import type { LinkProps } from 'next/link';
 import Link from 'next/link';
 import { Fragment, forwardRef } from 'react';
 import { useIntl } from 'react-intl';
+import useSWR from 'swr';
 
 const messages = defineMessages('components.Layout.UserDropdown', {
   myprofile: 'Profile',
@@ -45,6 +51,11 @@ interface UserDropdownProps {
 const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
   const intl = useIntl();
   const { user, revalidate, hasPermission } = useUser();
+  const { data: serviceStatus } = useSWR<BladePlexStatusResponse>(
+    '/api/v1/bladeplex-status',
+    { refreshInterval: 2 * 60 * 1000 }
+  );
+  const displayedStatus = serviceStatus?.status ?? 'unknown';
 
   const logout = async () => {
     const response = await axios.post('/api/v1/auth/logout');
@@ -58,7 +69,7 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
     <Menu as="div" className="relative ml-3">
       <div>
         <Menu.Button
-          className="flex max-w-xs items-center rounded-full text-sm ring-1 ring-gray-700 hover:ring-gray-500 focus:outline-none focus:ring-gray-500"
+          className={`flex max-w-xs items-center rounded-full text-sm ring-2 ${statusStyles[displayedStatus].ring} hover:ring-opacity-100 focus:outline-none focus:ring-opacity-100`}
           data-testid="user-menu"
         >
           <CachedImage
@@ -199,6 +210,14 @@ const UserDropdown = ({ onInstallPwa, pwaInstallMode }: UserDropdownProps) => {
                   </a>
                 )}
               </Menu.Item>
+            </div>
+            <div className="p-1">
+              <BladePlexStatusRow
+                status={displayedStatus}
+                statusPageUrl={
+                  serviceStatus?.statusPageUrl ?? 'https://status.sblade.io/'
+                }
+              />
             </div>
           </div>
         </Menu.Items>

@@ -2334,6 +2334,37 @@ paths:
                   appDataPermissions:
                     type: boolean
                     example: true
+  /bladeplex-status:
+    get:
+      summary: Get BladePlex service status
+      description: Returns the cached status of services monitored by the BladePlex status page.
+      tags:
+        - public
+      responses:
+        '200':
+          description: BladePlex service status
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - statusPageUrl
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - operational
+                      - degraded
+                      - plex_down
+                      - radarr_down
+                      - sonarr_down
+                      - downloads_down
+                      - unknown
+                  statusPageUrl:
+                    type: string
+                    format: uri
+                    example: https://status.sblade.io/
   /settings/main:
     get:
       summary: Get main settings

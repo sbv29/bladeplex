@@ -1,5 +1,13 @@
 {
+  "components.Layout.UserDropdown.allSystemsOperational": "All systems operational",
   "components.Layout.UserDropdown.installBladePlex": "Install BladePlex",
+  "components.Layout.UserDropdown.openStatusPage": "Open BladePlex status page",
+  "components.Layout.UserDropdown.downloadsUnavailable": "Downloads are currently unavailable",
+  "components.Layout.UserDropdown.movieRequestsUnavailable": "Movie Downloading/Requesting is unavailable",
+  "components.Layout.UserDropdown.plexCurrentlyUnavailable": "Media streaming (Plex) is unavailable",
+  "components.Layout.UserDropdown.serviceStatusUnavailable": "Service status unavailable",
+  "components.Layout.UserDropdown.someServicesUnavailable": "Some services are unavailable",
+  "components.Layout.UserDropdown.tvRequestsUnavailable": "TV Downloading/Requesting is unavailable",
   "components.Layout.Sidebar.installBladePlex": "Install BladePlex",
   "component.BlocklistBlock.blocklistdate": "Blocklisted date",
   "component.BlocklistBlock.blocklistedby": "Blocklisted By",
